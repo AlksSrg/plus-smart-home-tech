@@ -2,29 +2,170 @@ package ru.yandex.practicum.kafka;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.avro.specific.SpecificRecordBase;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
+import ru.yandex.practicum.exception.KafkaSendException;
 
+import java.util.concurrent.CompletableFuture;
+
+/**
+ * Компонент для отправки событий в Kafka.
+ * Обеспечивает надежную асинхронную отправку сообщений с логированием на русском языке.
+ * Поддерживает как синхронную, так и асинхронную отправку сообщений.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class KafkaProducerEvent {
 
-    private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final KafkaTemplate<String, SpecificRecordBase> kafkaTemplate;
 
-    public void send(String topic, String key, Object value) {
+    /**
+     * Отправляет сообщение в Kafka топик асинхронно.
+     *
+     * @param topic название топика
+     * @param key   ключ сообщения
+     * @param value значение сообщения (Avro объект)
+     * @throws IllegalArgumentException если параметры невалидны
+     * @throws KafkaSendException       если произошла ошибка при отправке
+     */
+    public void send(String topic, String key, SpecificRecordBase value) {
+        validateParameters(topic, key, value);
+
         try {
-            kafkaTemplate.send(topic, key, value)
-                    .whenComplete((result, ex) -> {
-                        if (ex == null) {
-                            log.debug("Message sent successfully to topic: {}, key: {}", topic, key);
-                        } else {
-                            log.error("Failed to send message to topic: {}, key: {}", topic, key, ex);
-                        }
-                    });
+            CompletableFuture<SendResult<String, SpecificRecordBase>> future =
+                    kafkaTemplate.send(topic, key, value);
+
+            future.whenComplete((result, exception) -> {
+                if (exception == null) {
+                    log.debug("Сообщение успешно отправлено в топик: '{}', ключ: '{}', partition: {}, offset: {}",
+                            topic, key,
+                            result.getRecordMetadata().partition(),
+                            result.getRecordMetadata().offset());
+                } else {
+                    log.error("Не удалось отправить сообщение в топик: '{}', ключ: '{}'",
+                            topic, key, exception);
+                }
+            });
+
         } catch (Exception e) {
-            log.error("Error sending message to Kafka topic: {}", topic, e);
-            throw new RuntimeException("Failed to send message to Kafka", e);
+            log.error("Ошибка при отправке сообщения в Kafka. Топик: '{}', ключ: '{}'",
+                    topic, key, e);
+            throw new KafkaSendException("Не удалось отправить сообщение в Kafka", e);
         }
+    }
+
+    /**
+     * Отправляет сообщение в Kafka топик синхронно с ожиданием подтверждения.
+     *
+     * @param topic название топика
+     * @param key   ключ сообщения
+     * @param value значение сообщения (Avro объект)
+     * @throws IllegalArgumentException если параметры невалидны
+     * @throws KafkaSendException       если произошла ошибка при отправке
+     */
+    public void sendSync(String topic, String key, SpecificRecordBase value) {
+        validateParameters(topic, key, value);
+
+        try {
+            SendResult<String, SpecificRecordBase> result = kafkaTemplate.send(topic, key, value).get();
+
+            log.debug("Сообщение синхронно отправлено в топик: '{}', ключ: '{}', partition: {}, offset: {}",
+                    topic, key,
+                    result.getRecordMetadata().partition(),
+                    result.getRecordMetadata().offset());
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("Поток был прерван при отправке сообщения в Kafka. Топик: '{}', ключ: '{}'",
+                    topic, key, e);
+            throw new KafkaSendException("Поток прерван при отправке сообщения в Kafka", e);
+        } catch (Exception e) {
+            log.error("Ошибка при синхронной отправке сообщения в Kafka. Топик: '{}', ключ: '{}'",
+                    topic, key, e);
+            throw new KafkaSendException("Не удалось отправить сообщение в Kafka", e);
+        }
+    }
+
+    /**
+     * Отправляет сообщение с расширенными параметрами.
+     *
+     * @param param параметры отправки сообщения
+     * @throws IllegalArgumentException если параметры невалидны
+     * @throws KafkaSendException       если произошла ошибка при отправке
+     */
+    public void send(KafkaProducerParam param) {
+        if (!param.isValid()) {
+            log.error("Попытка отправки сообщения с невалидными параметрами: {}", param);
+            throw new IllegalArgumentException("Невалидные параметры отправки: " + param);
+        }
+
+        try {
+            ProducerRecord<String, SpecificRecordBase> record = new ProducerRecord<>(
+                    param.getTopic(),
+                    param.getPartition(),
+                    param.getTimestamp(),
+                    param.getKey(),
+                    param.getValue()
+            );
+
+            CompletableFuture<SendResult<String, SpecificRecordBase>> future = kafkaTemplate.send(record);
+
+            future.whenComplete((result, exception) -> {
+                if (exception == null) {
+                    log.debug("Сообщение с параметрами успешно отправлено. Топик: '{}', ключ: '{}', partition: {}, offset: {}",
+                            param.getTopic(), param.getKey(),
+                            result.getRecordMetadata().partition(),
+                            result.getRecordMetadata().offset());
+                } else {
+                    log.error("Не удалось отправить сообщение с параметрами. Топик: '{}', ключ: '{}'",
+                            param.getTopic(), param.getKey(), exception);
+                }
+            });
+
+        } catch (Exception e) {
+            log.error("Ошибка при отправке сообщения с параметрами. Параметры: {}", param, e);
+            throw new KafkaSendException("Не удалось отправить сообщение с параметрами", e);
+        }
+    }
+
+    /**
+     * Выполняет принудительную синхронизацию и очистку буферов продюсера.
+     * Рекомендуется вызывать перед завершением работы приложения.
+     */
+    public void flush() {
+        try {
+            kafkaTemplate.flush();
+            log.debug("Буферы Kafka продюсера успешно синхронизированы");
+        } catch (Exception e) {
+            log.error("Ошибка при синхронизации буферов Kafka продюсера", e);
+            throw new RuntimeException("Ошибка синхронизации буферов Kafka", e);
+        }
+    }
+
+    /**
+     * Валидирует параметры отправки сообщения.
+     *
+     * @param topic топик
+     * @param key   ключ
+     * @param value значение
+     * @throws IllegalArgumentException если параметры невалидны
+     */
+    private void validateParameters(String topic, String key, SpecificRecordBase value) {
+        if (topic == null || topic.trim().isEmpty()) {
+            throw new IllegalArgumentException("Топик не может быть null или пустым");
+        }
+        if (key == null || key.trim().isEmpty()) {
+            throw new IllegalArgumentException("Ключ не может быть null или пустым");
+        }
+        if (value == null) {
+            throw new IllegalArgumentException("Значение не может быть null");
+        }
+
+        log.trace("Параметры отправки валидны. Топик: '{}', ключ: '{}', тип значения: {}",
+                topic, key, value.getClass().getSimpleName());
     }
 }

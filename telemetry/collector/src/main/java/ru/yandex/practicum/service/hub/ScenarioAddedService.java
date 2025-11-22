@@ -34,7 +34,7 @@ public class ScenarioAddedService extends HubEventService<ScenarioAddedEventAvro
 
         List<ScenarioConditionAvro> conditions = scenarioAddedEvent.getConditions().stream()
                 .map(condition -> ScenarioConditionAvro.newBuilder()
-                        .setSensorId(condition.getSensorId()) // поле sensor_id в Avro
+                        .setSensorId(condition.getSensorId())
                         .setType(ConditionTypeAvro.valueOf(condition.getType().name()))
                         .setOperation(ConditionOperationAvro.valueOf(condition.getOperation().name()))
                         .setValue(condition.getValue())
@@ -43,7 +43,7 @@ public class ScenarioAddedService extends HubEventService<ScenarioAddedEventAvro
 
         List<DeviceActionAvro> actions = scenarioAddedEvent.getActions().stream()
                 .map(action -> DeviceActionAvro.newBuilder()
-                        .setSensorId(action.getSensorId()) // поле sensor_id в Avro
+                        .setSensorId(action.getSensorId())
                         .setType(ActionTypeAvro.valueOf(action.getType().name()))
                         .setValue(action.getValue())
                         .build())

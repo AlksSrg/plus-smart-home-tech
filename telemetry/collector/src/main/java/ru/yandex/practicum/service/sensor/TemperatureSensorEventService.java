@@ -4,12 +4,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.kafka.KafkaProducerEvent;
+import ru.yandex.practicum.kafka.telemetry.event.SensorEventAvro;
 import ru.yandex.practicum.kafka.telemetry.event.TemperatureSensorAvro;
+import ru.yandex.practicum.model.sensor.SensorEvent;
 import ru.yandex.practicum.model.sensor.SensorEventType;
 import ru.yandex.practicum.model.sensor.TemperatureSensorEvent;
 
 /**
  * Сервис для обработки событий датчиков температуры.
+ * Преобразует TemperatureSensorEvent в Avro формат и отправляет в Kafka.
  */
 @Slf4j
 @Service
@@ -19,21 +22,24 @@ public class TemperatureSensorEventService implements SensorEventService {
     private final KafkaProducerEvent kafkaProducer;
 
     @Override
-    public void process(ru.yandex.practicum.model.sensor.SensorEvent event) {
+    public void process(SensorEvent event) {
         TemperatureSensorEvent tempEvent = (TemperatureSensorEvent) event;
         log.debug("Обработка события датчика температуры: {}", tempEvent);
 
-        // Для TemperatureSensorAvro создаем напрямую, так как он уже содержит все поля
         TemperatureSensorAvro tempAvro = TemperatureSensorAvro.newBuilder()
-                .setId(tempEvent.getId())
-                .setHubId(tempEvent.getHubId())
-                .setTimestamp(tempEvent.getTimestamp().toEpochMilli())
                 .setTemperatureC(tempEvent.getTemperatureC())
                 .setTemperatureF(tempEvent.getTemperatureF())
                 .build();
 
-        // TemperatureSensorAvro отправляется напрямую, а не через SensorEventAvro
-        kafkaProducer.send("telemetry.sensors.v1", tempEvent.getId(), tempAvro);
+        SensorEventAvro sensorEventAvro = SensorEventAvro.newBuilder()
+                .setId(tempEvent.getId())
+                .setHubId(tempEvent.getHubId())
+                .setTimestamp(tempEvent.getTimestamp().toEpochMilli())
+                .setPayload(tempAvro)
+                .build();
+
+        kafkaProducer.send("telemetry.sensors.v1", tempEvent.getId(), sensorEventAvro);
+        log.debug("Событие датчика температуры отправлено в Kafka. ID: {}", tempEvent.getId());
     }
 
     @Override

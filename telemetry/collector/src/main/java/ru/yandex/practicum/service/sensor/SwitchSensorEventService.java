@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import ru.yandex.practicum.kafka.KafkaProducerEvent;
 import ru.yandex.practicum.kafka.telemetry.event.SensorEventAvro;
 import ru.yandex.practicum.kafka.telemetry.event.SwitchSensorAvro;
+import ru.yandex.practicum.model.sensor.SensorEvent;
 import ru.yandex.practicum.model.sensor.SensorEventType;
 import ru.yandex.practicum.model.sensor.SwitchSensorEvent;
 
@@ -20,7 +21,7 @@ public class SwitchSensorEventService implements SensorEventService {
     private final KafkaProducerEvent kafkaProducer;
 
     @Override
-    public void process(ru.yandex.practicum.model.sensor.SensorEvent event) {
+    public void process(SensorEvent event) {
         SwitchSensorEvent switchEvent = (SwitchSensorEvent) event;
         log.debug("Обработка события датчика-переключателя: {}", switchEvent);
 

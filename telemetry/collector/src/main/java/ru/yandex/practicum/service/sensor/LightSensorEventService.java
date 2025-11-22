@@ -7,6 +7,7 @@ import ru.yandex.practicum.kafka.KafkaProducerEvent;
 import ru.yandex.practicum.kafka.telemetry.event.LightSensorAvro;
 import ru.yandex.practicum.kafka.telemetry.event.SensorEventAvro;
 import ru.yandex.practicum.model.sensor.LightSensorEvent;
+import ru.yandex.practicum.model.sensor.SensorEvent;
 import ru.yandex.practicum.model.sensor.SensorEventType;
 
 /**
@@ -20,7 +21,7 @@ public class LightSensorEventService implements SensorEventService {
     private final KafkaProducerEvent kafkaProducer;
 
     @Override
-    public void process(ru.yandex.practicum.model.sensor.SensorEvent event) {
+    public void process(SensorEvent event) {
         LightSensorEvent lightEvent = (LightSensorEvent) event;
         log.debug("Обработка события датчика освещенности: {}", lightEvent);
 

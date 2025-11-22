@@ -7,10 +7,12 @@ import ru.yandex.practicum.kafka.KafkaProducerEvent;
 import ru.yandex.practicum.kafka.telemetry.event.ClimateSensorAvro;
 import ru.yandex.practicum.kafka.telemetry.event.SensorEventAvro;
 import ru.yandex.practicum.model.sensor.ClimateSensorEvent;
+import ru.yandex.practicum.model.sensor.SensorEvent;
 import ru.yandex.practicum.model.sensor.SensorEventType;
 
 /**
  * Сервис для обработки событий климатических датчиков.
+ * Преобразует ClimateSensorEvent в Avro формат и отправляет в Kafka.
  */
 @Slf4j
 @Service
@@ -20,7 +22,7 @@ public class ClimateSensorEventService implements SensorEventService {
     private final KafkaProducerEvent kafkaProducer;
 
     @Override
-    public void process(ru.yandex.practicum.model.sensor.SensorEvent event) {
+    public void process(SensorEvent event) {
         ClimateSensorEvent climateEvent = (ClimateSensorEvent) event;
         log.debug("Обработка события климатического датчика: {}", climateEvent);
 
@@ -38,6 +40,7 @@ public class ClimateSensorEventService implements SensorEventService {
                 .build();
 
         kafkaProducer.send("telemetry.sensors.v1", climateEvent.getId(), sensorEventAvro);
+        log.debug("Событие климатического датчика отправлено в Kafka. ID: {}", climateEvent.getId());
     }
 
     @Override

@@ -44,6 +44,13 @@ public class DeviceAddedService extends HubEventService<DeviceAddedEventAvro> {
         return buildHubEventAvro(hubEvent, payload);
     }
 
+    /**
+     * Преобразует доменный тип устройства в Avro тип устройства.
+     *
+     * @param deviceType доменный тип устройства
+     * @return Avro тип устройства
+     * @throws IllegalArgumentException если тип устройства не поддерживается
+     */
     private DeviceTypeAvro mapToDeviceTypeAvro(DeviceType deviceType) {
         return switch (deviceType) {
             case MOTION_SENSOR -> DeviceTypeAvro.MOTION_SENSOR;
@@ -51,7 +58,7 @@ public class DeviceAddedService extends HubEventService<DeviceAddedEventAvro> {
             case LIGHT_SENSOR -> DeviceTypeAvro.LIGHT_SENSOR;
             case CLIMATE_SENSOR -> DeviceTypeAvro.CLIMATE_SENSOR;
             case SWITCH_SENSOR -> DeviceTypeAvro.SWITCH_SENSOR;
-            default -> throw new IllegalArgumentException("Unsupported device type: " + deviceType);
+            default -> throw new IllegalArgumentException("Неподдерживаемый тип устройства: " + deviceType);
         };
     }
 }

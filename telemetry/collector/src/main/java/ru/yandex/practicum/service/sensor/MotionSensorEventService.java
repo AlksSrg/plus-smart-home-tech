@@ -7,6 +7,7 @@ import ru.yandex.practicum.kafka.KafkaProducerEvent;
 import ru.yandex.practicum.kafka.telemetry.event.MotionSensorAvro;
 import ru.yandex.practicum.kafka.telemetry.event.SensorEventAvro;
 import ru.yandex.practicum.model.sensor.MotionSensorEvent;
+import ru.yandex.practicum.model.sensor.SensorEvent;
 import ru.yandex.practicum.model.sensor.SensorEventType;
 
 /**
@@ -20,7 +21,7 @@ public class MotionSensorEventService implements SensorEventService {
     private final KafkaProducerEvent kafkaProducer;
 
     @Override
-    public void process(ru.yandex.practicum.model.sensor.SensorEvent event) {
+    public void process(SensorEvent event) {
         MotionSensorEvent motionEvent = (MotionSensorEvent) event;
         log.debug("Обработка события датчика движения: {}", motionEvent);
 

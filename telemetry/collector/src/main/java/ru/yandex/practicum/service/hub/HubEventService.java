@@ -36,12 +36,12 @@ public abstract class HubEventService<T extends SpecificRecordBase> {
         try {
             HubEventAvro avroEvent = mapToAvroHubEvent(hubEvent);
             sendToKafka(hubEvent, avroEvent);
-            log.debug("Successfully processed hub event. Type: {}, HubId: {}",
+            log.debug("Событие хаба успешно обработано. Тип: {}, HubId: {}",
                     getType(), hubEvent.getHubId());
         } catch (Exception e) {
-            log.error("Failed to process hub event. Type: {}, HubId: {}",
+            log.error("Не удалось обработать событие хаба. Тип: {}, HubId: {}",
                     getType(), hubEvent.getHubId(), e);
-            throw new RuntimeException("Hub event processing failed", e);
+            throw new RuntimeException("Ошибка обработки события хаба", e);
         }
     }
 
@@ -76,8 +76,8 @@ public abstract class HubEventService<T extends SpecificRecordBase> {
      * @return собранное Avro событие хаба
      */
     protected HubEventAvro buildHubEventAvro(HubEvent hubEvent, T payloadAvro) {
-        Objects.requireNonNull(hubEvent, "HubEvent cannot be null");
-        Objects.requireNonNull(payloadAvro, "Payload cannot be null");
+        Objects.requireNonNull(hubEvent, "HubEvent не может быть null");
+        Objects.requireNonNull(payloadAvro, "Payload не может быть null");
 
         return HubEventAvro.newBuilder()
                 .setHubId(hubEvent.getHubId())
@@ -94,7 +94,7 @@ public abstract class HubEventService<T extends SpecificRecordBase> {
      */
     protected void sendToKafka(HubEvent hubEvent, HubEventAvro avroEvent) {
         kafkaProducerEvent.send(topicName, hubEvent.getHubId(), avroEvent);
-        log.trace("Record sent successfully. HubId: {}, Topic: {}",
+        log.trace("Запись успешно отправлена. HubId: {}, Топик: {}",
                 hubEvent.getHubId(), topicName);
     }
 
@@ -106,13 +106,13 @@ public abstract class HubEventService<T extends SpecificRecordBase> {
      */
     protected void validateHubEvent(HubEvent hubEvent) {
         if (hubEvent == null) {
-            throw new IllegalArgumentException("HubEvent cannot be null");
+            throw new IllegalArgumentException("HubEvent не может быть null");
         }
         if (hubEvent.getHubId() == null || hubEvent.getHubId().trim().isEmpty()) {
-            throw new IllegalArgumentException("HubId cannot be null or empty");
+            throw new IllegalArgumentException("HubId не может быть null или пустым");
         }
         if (hubEvent.getTimestamp() == null) {
-            throw new IllegalArgumentException("Timestamp cannot be null");
+            throw new IllegalArgumentException("Timestamp не может быть null");
         }
     }
 }
