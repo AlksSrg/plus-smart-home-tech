@@ -1,7 +1,7 @@
 package ru.yandex.practicum.service.hub;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.model.hub.HubEvent;
 
@@ -12,11 +12,11 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class HubEventProcessingService {
 
     private final Map<String, HubEventService> hubEventServices;
 
+    @Autowired
     public HubEventProcessingService(List<HubEventService> services) {
         this.hubEventServices = services.stream()
                 .collect(Collectors.toMap(
