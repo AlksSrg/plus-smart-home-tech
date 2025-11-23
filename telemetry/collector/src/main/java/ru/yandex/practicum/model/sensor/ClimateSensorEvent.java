@@ -13,12 +13,21 @@ import lombok.ToString;
 @ToString(callSuper = true)
 public class ClimateSensorEvent extends SensorEvent {
 
+    /**
+     * Температура в градусах Цельсия.
+     */
     @NotNull(message = "Температура не может быть null")
     private int temperatureC;
 
+    /**
+     * Влажность в процентах.
+     */
     @NotNull(message = "Влажность не может быть null")
     private int humidity;
 
+    /**
+     * Уровень CO2 в ppm.
+     */
     @NotNull(message = "Уровень CO2 не может быть null")
     private int co2Level;
 

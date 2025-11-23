@@ -18,16 +18,33 @@ import ru.yandex.practicum.model.hub.HubEventType;
 @Service
 public class DeviceAddedService extends HubEventService<DeviceAddedEventAvro> {
 
+    /**
+     * Конструктор сервиса.
+     *
+     * @param kafkaProducerEvent компонент для отправки событий в Kafka
+     * @param topicName          название топика Kafka
+     */
     public DeviceAddedService(KafkaProducerEvent kafkaProducerEvent,
                               @Value("${kafka.topics.hub-events:telemetry.hubs.v1}") String topicName) {
         super(kafkaProducerEvent, topicName);
     }
 
+    /**
+     * Возвращает тип обрабатываемого события.
+     *
+     * @return тип события DEVICE_ADDED
+     */
     @Override
     public HubEventType getType() {
         return HubEventType.DEVICE_ADDED;
     }
 
+    /**
+     * Преобразует доменное событие в Avro payload.
+     *
+     * @param hubEvent доменное событие добавления устройства
+     * @return Avro представление события
+     */
     @Override
     public DeviceAddedEventAvro mapToAvro(HubEvent hubEvent) {
         DeviceAddedEvent deviceAddedEvent = (DeviceAddedEvent) hubEvent;
@@ -38,6 +55,12 @@ public class DeviceAddedService extends HubEventService<DeviceAddedEventAvro> {
                 .build();
     }
 
+    /**
+     * Преобразует доменное событие в полное Avro событие хаба.
+     *
+     * @param hubEvent доменное событие хаба
+     * @return полное Avro событие хаба
+     */
     @Override
     protected HubEventAvro mapToAvroHubEvent(HubEvent hubEvent) {
         DeviceAddedEventAvro payload = mapToAvro(hubEvent);

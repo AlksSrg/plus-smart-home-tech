@@ -19,8 +19,17 @@ import ru.yandex.practicum.model.sensor.SensorEventType;
 @RequiredArgsConstructor
 public class ClimateSensorEventService implements SensorEventService {
 
+    /**
+     * Компонент для отправки событий в Kafka.
+     */
     private final KafkaProducerEvent kafkaProducer;
 
+    /**
+     * Обрабатывает событие климатического датчика.
+     *
+     * @param event событие датчика для обработки
+     * @throws RuntimeException если произошла ошибка при обработке события
+     */
     @Override
     public void process(SensorEvent event) {
         ClimateSensorEvent climateEvent = (ClimateSensorEvent) event;
@@ -43,6 +52,12 @@ public class ClimateSensorEventService implements SensorEventService {
         log.debug("Событие климатического датчика отправлено в Kafka. ID: {}", climateEvent.getId());
     }
 
+    /**
+     * Проверяет, поддерживает ли сервис указанный тип события.
+     *
+     * @param eventType тип события для проверки
+     * @return true если сервис поддерживает тип события, иначе false
+     */
     @Override
     public boolean supports(String eventType) {
         return SensorEventType.CLIMATE_SENSOR_EVENT.name().equals(eventType);

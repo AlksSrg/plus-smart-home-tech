@@ -14,9 +14,15 @@ import lombok.ToString;
 @ToString(callSuper = true)
 public class DeviceAddedEvent extends HubEvent {
 
+    /**
+     * Идентификатор устройства.
+     */
     @NotBlank(message = "Идентификатор устройства не может быть пустым")
     private String id;
 
+    /**
+     * Тип устройства.
+     */
     @NotNull(message = "Тип устройства не может быть null")
     private DeviceType deviceType;
 

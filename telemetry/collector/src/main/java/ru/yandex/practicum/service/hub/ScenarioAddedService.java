@@ -18,16 +18,33 @@ import java.util.stream.Collectors;
 @Service
 public class ScenarioAddedService extends HubEventService<ScenarioAddedEventAvro> {
 
+    /**
+     * Конструктор сервиса.
+     *
+     * @param kafkaProducerEvent компонент для отправки событий в Kafka
+     * @param topicName          название топика Kafka
+     */
     public ScenarioAddedService(KafkaProducerEvent kafkaProducerEvent,
                                 @Value("${kafka.topics.hub-events:telemetry.hubs.v1}") String topicName) {
         super(kafkaProducerEvent, topicName);
     }
 
+    /**
+     * Возвращает тип обрабатываемого события.
+     *
+     * @return тип события SCENARIO_ADDED
+     */
     @Override
     public HubEventType getType() {
         return HubEventType.SCENARIO_ADDED;
     }
 
+    /**
+     * Преобразует доменное событие в Avro payload.
+     *
+     * @param hubEvent доменное событие добавления сценария
+     * @return Avro представление события
+     */
     @Override
     public ScenarioAddedEventAvro mapToAvro(HubEvent hubEvent) {
         ScenarioAddedEvent scenarioAddedEvent = (ScenarioAddedEvent) hubEvent;
@@ -56,6 +73,12 @@ public class ScenarioAddedService extends HubEventService<ScenarioAddedEventAvro
                 .build();
     }
 
+    /**
+     * Преобразует доменное событие в полное Avro событие хаба.
+     *
+     * @param hubEvent доменное событие хаба
+     * @return полное Avro событие хаба
+     */
     @Override
     protected HubEventAvro mapToAvroHubEvent(HubEvent hubEvent) {
         ScenarioAddedEventAvro payload = mapToAvro(hubEvent);
@@ -65,6 +88,10 @@ public class ScenarioAddedService extends HubEventService<ScenarioAddedEventAvro
     /**
      * Преобразует значение условия в совместимый с Avro тип.
      * По схеме: union{null, int, boolean} value = null
+     *
+     * @param value значение условия для преобразования
+     * @return преобразованное значение
+     * @throws IllegalArgumentException если тип значения не поддерживается
      */
     private Object mapConditionValue(Object value) {
         if (value == null) {
@@ -87,6 +114,10 @@ public class ScenarioAddedService extends HubEventService<ScenarioAddedEventAvro
     /**
      * Преобразует значение действия в совместимый с Avro тип.
      * По схеме: union{null, int} value = null
+     *
+     * @param value значение действия для преобразования
+     * @return преобразованное значение
+     * @throws IllegalArgumentException если тип значения не поддерживается
      */
     private Object mapActionValue(Object value) {
         if (value == null) {

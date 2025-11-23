@@ -13,6 +13,9 @@ import lombok.ToString;
 @ToString(callSuper = true)
 public class SwitchSensorEvent extends SensorEvent {
 
+    /**
+     * Состояние переключателя.
+     */
     @NotNull(message = "Состояние переключателя не может быть null")
     private Boolean state;
 

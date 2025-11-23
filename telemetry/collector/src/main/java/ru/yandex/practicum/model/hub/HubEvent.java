@@ -32,9 +32,15 @@ import java.time.Instant;
 @ToString
 public abstract class HubEvent {
 
+    /**
+     * Идентификатор хаба.
+     */
     @NotBlank(message = "Идентификатор хаба не может быть пустым")
     private String hubId;
 
+    /**
+     * Временная метка события.
+     */
     private Instant timestamp = Instant.now();
 
     /**

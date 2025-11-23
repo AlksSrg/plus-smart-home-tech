@@ -32,12 +32,21 @@ import java.time.Instant;
 @ToString
 public abstract class SensorEvent {
 
+    /**
+     * Идентификатор датчика.
+     */
     @NotBlank(message = "Идентификатор датчика не может быть пустым")
     private String id;
 
+    /**
+     * Идентификатор хаба.
+     */
     @NotBlank(message = "Идентификатор хаба не может быть пустым")
     private String hubId;
 
+    /**
+     * Временная метка события.
+     */
     private Instant timestamp = Instant.now();
 
     /**

@@ -14,11 +14,20 @@ import lombok.ToString;
 @ToString
 public class DeviceAction {
 
+    /**
+     * Идентификатор датчика.
+     */
     @NotBlank(message = "Идентификатор датчика не может быть пустым")
     private String sensorId;
 
+    /**
+     * Тип действия.
+     */
     @NotNull(message = "Тип действия не может быть null")
     private ActionType type;
 
+    /**
+     * Значение действия.
+     */
     private Integer value;
 }

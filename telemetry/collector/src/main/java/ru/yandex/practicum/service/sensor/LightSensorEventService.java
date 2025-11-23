@@ -12,14 +12,24 @@ import ru.yandex.practicum.model.sensor.SensorEventType;
 
 /**
  * Сервис для обработки событий датчиков освещенности.
+ * Преобразует LightSensorEvent в Avro формат и отправляет в Kafka.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class LightSensorEventService implements SensorEventService {
 
+    /**
+     * Компонент для отправки событий в Kafka.
+     */
     private final KafkaProducerEvent kafkaProducer;
 
+    /**
+     * Обрабатывает событие датчика освещенности.
+     *
+     * @param event событие датчика для обработки
+     * @throws RuntimeException если произошла ошибка при обработке события
+     */
     @Override
     public void process(SensorEvent event) {
         LightSensorEvent lightEvent = (LightSensorEvent) event;
@@ -38,8 +48,15 @@ public class LightSensorEventService implements SensorEventService {
                 .build();
 
         kafkaProducer.send("telemetry.sensors.v1", lightEvent.getId(), sensorEventAvro);
+        log.debug("Событие датчика освещенности отправлено в Kafka. ID: {}", lightEvent.getId());
     }
 
+    /**
+     * Проверяет, поддерживает ли сервис указанный тип события.
+     *
+     * @param eventType тип события для проверки
+     * @return true если сервис поддерживает тип события, иначе false
+     */
     @Override
     public boolean supports(String eventType) {
         return SensorEventType.LIGHT_SENSOR_EVENT.name().equals(eventType);

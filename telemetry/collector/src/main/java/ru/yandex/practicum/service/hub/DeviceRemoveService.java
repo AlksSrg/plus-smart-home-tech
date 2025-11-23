@@ -16,16 +16,33 @@ import ru.yandex.practicum.model.hub.HubEventType;
 @Service
 public class DeviceRemoveService extends HubEventService<DeviceRemovedEventAvro> {
 
+    /**
+     * Конструктор сервиса.
+     *
+     * @param kafkaProducerEvent компонент для отправки событий в Kafka
+     * @param topicName          название топика Kafka
+     */
     public DeviceRemoveService(KafkaProducerEvent kafkaProducerEvent,
                                @Value("${kafka.topics.hub-events:telemetry.hubs.v1}") String topicName) {
         super(kafkaProducerEvent, topicName);
     }
 
+    /**
+     * Возвращает тип обрабатываемого события.
+     *
+     * @return тип события DEVICE_REMOVED
+     */
     @Override
     public HubEventType getType() {
         return HubEventType.DEVICE_REMOVED;
     }
 
+    /**
+     * Преобразует доменное событие в Avro payload.
+     *
+     * @param hubEvent доменное событие удаления устройства
+     * @return Avro представление события
+     */
     @Override
     public DeviceRemovedEventAvro mapToAvro(HubEvent hubEvent) {
         DeviceRemovedEvent deviceRemovedEvent = (DeviceRemovedEvent) hubEvent;
@@ -35,6 +52,12 @@ public class DeviceRemoveService extends HubEventService<DeviceRemovedEventAvro>
                 .build();
     }
 
+    /**
+     * Преобразует доменное событие в полное Avro событие хаба.
+     *
+     * @param hubEvent доменное событие хаба
+     * @return полное Avro событие хаба
+     */
     @Override
     protected HubEventAvro mapToAvroHubEvent(HubEvent hubEvent) {
         DeviceRemovedEventAvro payload = mapToAvro(hubEvent);

@@ -13,6 +13,9 @@ import lombok.ToString;
 @ToString(callSuper = true)
 public class ScenarioRemovedEvent extends HubEvent {
 
+    /**
+     * Название сценария.
+     */
     @NotBlank(message = "Название сценария не может быть пустым")
     private String name;
 

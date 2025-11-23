@@ -20,7 +20,14 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public abstract class HubEventService<T extends SpecificRecordBase> {
 
+    /**
+     * Компонент для отправки событий в Kafka.
+     */
     protected final KafkaProducerEvent kafkaProducerEvent;
+
+    /**
+     * Название топика Kafka для отправки событий.
+     */
     protected final String topicName;
 
     /**
@@ -74,6 +81,7 @@ public abstract class HubEventService<T extends SpecificRecordBase> {
      * @param hubEvent    исходное доменное событие
      * @param payloadAvro Avro payload события
      * @return собранное Avro событие хаба
+     * @throws NullPointerException если hubEvent или payloadAvro равны null
      */
     protected HubEventAvro buildHubEventAvro(HubEvent hubEvent, T payloadAvro) {
         Objects.requireNonNull(hubEvent, "HubEvent не может быть null");

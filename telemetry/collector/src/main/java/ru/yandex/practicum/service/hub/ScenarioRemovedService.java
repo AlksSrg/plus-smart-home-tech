@@ -16,16 +16,33 @@ import ru.yandex.practicum.model.hub.ScenarioRemovedEvent;
 @Service
 public class ScenarioRemovedService extends HubEventService<ScenarioRemovedEventAvro> {
 
+    /**
+     * Конструктор сервиса.
+     *
+     * @param kafkaProducerEvent компонент для отправки событий в Kafka
+     * @param topicName          название топика Kafka
+     */
     public ScenarioRemovedService(KafkaProducerEvent kafkaProducerEvent,
                                   @Value("${kafka.topics.hub-events:telemetry.hubs.v1}") String topicName) {
         super(kafkaProducerEvent, topicName);
     }
 
+    /**
+     * Возвращает тип обрабатываемого события.
+     *
+     * @return тип события SCENARIO_REMOVED
+     */
     @Override
     public HubEventType getType() {
         return HubEventType.SCENARIO_REMOVED;
     }
 
+    /**
+     * Преобразует доменное событие в Avro payload.
+     *
+     * @param hubEvent доменное событие удаления сценария
+     * @return Avro представление события
+     */
     @Override
     public ScenarioRemovedEventAvro mapToAvro(HubEvent hubEvent) {
         ScenarioRemovedEvent scenarioRemovedEvent = (ScenarioRemovedEvent) hubEvent;
@@ -35,6 +52,12 @@ public class ScenarioRemovedService extends HubEventService<ScenarioRemovedEvent
                 .build();
     }
 
+    /**
+     * Преобразует доменное событие в полное Avro событие хаба.
+     *
+     * @param hubEvent доменное событие хаба
+     * @return полное Avro событие хаба
+     */
     @Override
     protected HubEventAvro mapToAvroHubEvent(HubEvent hubEvent) {
         ScenarioRemovedEventAvro payload = mapToAvro(hubEvent);

@@ -12,14 +12,30 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Map;
 
+/**
+ * Сериализатор для Avro сообщений.
+ */
 @Slf4j
 public class GeneralAvroSerializer implements Serializer<SpecificRecordBase> {
 
+    /**
+     * Конфигурация сериализатора.
+     *
+     * @param configs конфигурационные параметры
+     * @param isKey   флаг indicating whether is for key or value
+     */
     @Override
     public void configure(Map<String, ?> configs, boolean isKey) {
         // Конфигурация не требуется
     }
 
+    /**
+     * Сериализует Avro сообщение в массив байтов.
+     *
+     * @param topic название топика
+     * @param data  данные для сериализации
+     * @return сериализованные данные
+     */
     @Override
     public byte[] serialize(String topic, SpecificRecordBase data) {
         if (data == null) {
@@ -43,6 +59,9 @@ public class GeneralAvroSerializer implements Serializer<SpecificRecordBase> {
         }
     }
 
+    /**
+     * Закрывает сериализатор.
+     */
     @Override
     public void close() {
         // Ресурсы не требуют закрытия

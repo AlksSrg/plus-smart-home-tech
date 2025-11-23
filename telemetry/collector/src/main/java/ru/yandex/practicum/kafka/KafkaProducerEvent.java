@@ -11,6 +11,9 @@ import ru.yandex.practicum.exception.KafkaSendException;
 
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * Компонент для отправки событий в Kafka.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -18,6 +21,13 @@ public class KafkaProducerEvent {
 
     private final KafkaTemplate<String, SpecificRecordBase> kafkaTemplate;
 
+    /**
+     * Отправляет сообщение в Kafka асинхронно.
+     *
+     * @param topic топик
+     * @param key   ключ сообщения
+     * @param value значение сообщения
+     */
     public void send(String topic, String key, SpecificRecordBase value) {
         validateParameters(topic, key, value);
 
@@ -44,6 +54,13 @@ public class KafkaProducerEvent {
         }
     }
 
+    /**
+     * Отправляет сообщение в Kafka синхронно.
+     *
+     * @param topic топик
+     * @param key   ключ сообщения
+     * @param value значение сообщения
+     */
     public void sendSync(String topic, String key, SpecificRecordBase value) {
         validateParameters(topic, key, value);
 
@@ -67,6 +84,11 @@ public class KafkaProducerEvent {
         }
     }
 
+    /**
+     * Отправляет сообщение в Kafka с использованием параметров.
+     *
+     * @param param параметры отправки
+     */
     public void send(KafkaProducerParam param) {
         if (!param.isValid()) {
             log.error("Попытка отправки сообщения с невалидными параметрами: {}", param);
@@ -102,6 +124,9 @@ public class KafkaProducerEvent {
         }
     }
 
+    /**
+     * Синхронизирует буферы продюсера.
+     */
     public void flush() {
         try {
             kafkaTemplate.flush();
@@ -112,6 +137,13 @@ public class KafkaProducerEvent {
         }
     }
 
+    /**
+     * Проверяет параметры отправки.
+     *
+     * @param topic топик
+     * @param key   ключ
+     * @param value значение
+     */
     private void validateParameters(String topic, String key, SpecificRecordBase value) {
         if (topic == null || topic.trim().isEmpty()) {
             throw new IllegalArgumentException("Топик не может быть null или пустым");

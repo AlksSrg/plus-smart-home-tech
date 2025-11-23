@@ -16,11 +16,19 @@ import ru.yandex.practicum.kafka.serializer.GeneralAvroSerializer;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Конфигурация Kafka продюсера.
+ */
 @Getter
 @Setter
 @Configuration
 public class KafkaProducerConfig {
 
+    /**
+     * Создает фабрику продюсеров.
+     *
+     * @return фабрика продюсеров
+     */
     @Bean
     public ProducerFactory<String, SpecificRecordBase> producerFactory() {
         Map<String, Object> config = new HashMap<>();
@@ -36,11 +44,21 @@ public class KafkaProducerConfig {
         return new DefaultKafkaProducerFactory<>(config);
     }
 
+    /**
+     * Создает KafkaTemplate.
+     *
+     * @return KafkaTemplate
+     */
     @Bean
     public KafkaTemplate<String, SpecificRecordBase> kafkaTemplate() {
         return new KafkaTemplate<>(producerFactory());
     }
 
+    /**
+     * Создает Kafka продюсер.
+     *
+     * @return Kafka продюсер
+     */
     @Bean
     public Producer<String, SpecificRecordBase> kafkaProducer() {
         return producerFactory().createProducer();

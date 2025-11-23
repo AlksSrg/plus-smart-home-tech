@@ -13,9 +13,15 @@ import lombok.ToString;
 @ToString(callSuper = true)
 public class LightSensorEvent extends SensorEvent {
 
+    /**
+     * Качество связи.
+     */
     @NotNull(message = "Качество связи не может быть null")
     private int linkQuality;
 
+    /**
+     * Уровень освещенности.
+     */
     @NotNull(message = "Освещенность не может быть null")
     private int luminosity;
 

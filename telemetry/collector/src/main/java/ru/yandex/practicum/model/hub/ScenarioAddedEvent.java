@@ -16,12 +16,21 @@ import java.util.List;
 @ToString(callSuper = true)
 public class ScenarioAddedEvent extends HubEvent {
 
+    /**
+     * Название сценария.
+     */
     @NotBlank(message = "Название сценария не может быть пустым")
     private String name;
 
+    /**
+     * Список условий сценария.
+     */
     @NotEmpty(message = "Список условий не может быть пустым")
     private List<ScenarioCondition> conditions;
 
+    /**
+     * Список действий сценария.
+     */
     @NotEmpty(message = "Список действий не может быть пустым")
     private List<DeviceAction> actions;
 

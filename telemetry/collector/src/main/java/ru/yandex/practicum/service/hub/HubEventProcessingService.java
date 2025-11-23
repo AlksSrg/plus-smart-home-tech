@@ -10,12 +10,21 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * Сервис для маршрутизации и обработки событий хаба.
+ * Определяет соответствующий сервис для каждого типа события и делегирует обработку.
+ */
 @Slf4j
 @Service
 public class HubEventProcessingService {
 
     private final Map<String, HubEventService> hubEventServices;
 
+    /**
+     * Конструктор сервиса.
+     *
+     * @param services список всех сервисов обработки событий хаба
+     */
     @Autowired
     public HubEventProcessingService(List<HubEventService> services) {
         this.hubEventServices = services.stream()
@@ -25,6 +34,13 @@ public class HubEventProcessingService {
                 ));
     }
 
+    /**
+     * Обрабатывает событие хаба, направляя его в соответствующий сервис.
+     *
+     * @param event событие хаба для обработки
+     * @throws IllegalArgumentException если тип события не поддерживается
+     * @throws RuntimeException         при ошибках обработки события
+     */
     public void process(HubEvent event) {
         String eventType = event.getType().name();
 
@@ -32,8 +48,8 @@ public class HubEventProcessingService {
         if (service != null) {
             service.handle(event);
         } else {
-            log.warn("No processor found for hub event type: {}", eventType);
-            throw new IllegalArgumentException("Unsupported hub event type: " + eventType);
+            log.warn("Не найден обработчик для типа события хаба: {}", eventType);
+            throw new IllegalArgumentException("Неподдерживаемый тип события хаба: " + eventType);
         }
     }
 }

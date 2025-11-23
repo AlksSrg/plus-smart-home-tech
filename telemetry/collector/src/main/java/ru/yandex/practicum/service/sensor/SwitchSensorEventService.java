@@ -12,14 +12,24 @@ import ru.yandex.practicum.model.sensor.SwitchSensorEvent;
 
 /**
  * Сервис для обработки событий датчиков-переключателей.
+ * Преобразует SwitchSensorEvent в Avro формат и отправляет в Kafka.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class SwitchSensorEventService implements SensorEventService {
 
+    /**
+     * Компонент для отправки событий в Kafka.
+     */
     private final KafkaProducerEvent kafkaProducer;
 
+    /**
+     * Обрабатывает событие датчика-переключателя.
+     *
+     * @param event событие датчика для обработки
+     * @throws RuntimeException если произошла ошибка при обработке события
+     */
     @Override
     public void process(SensorEvent event) {
         SwitchSensorEvent switchEvent = (SwitchSensorEvent) event;
@@ -37,8 +47,15 @@ public class SwitchSensorEventService implements SensorEventService {
                 .build();
 
         kafkaProducer.send("telemetry.sensors.v1", switchEvent.getId(), sensorEventAvro);
+        log.debug("Событие датчика-переключателя отправлено в Kafka. ID: {}", switchEvent.getId());
     }
 
+    /**
+     * Проверяет, поддерживает ли сервис указанный тип события.
+     *
+     * @param eventType тип события для проверки
+     * @return true если сервис поддерживает тип события, иначе false
+     */
     @Override
     public boolean supports(String eventType) {
         return SensorEventType.SWITCH_SENSOR_EVENT.name().equals(eventType);

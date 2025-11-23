@@ -13,6 +13,9 @@ import lombok.ToString;
 @ToString(callSuper = true)
 public class DeviceRemovedEvent extends HubEvent {
 
+    /**
+     * Идентификатор устройства.
+     */
     @NotBlank(message = "Идентификатор устройства не может быть пустым")
     private String id;
 

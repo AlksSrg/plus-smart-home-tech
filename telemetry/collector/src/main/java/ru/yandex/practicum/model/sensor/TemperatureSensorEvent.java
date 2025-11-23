@@ -13,9 +13,15 @@ import lombok.ToString;
 @ToString(callSuper = true)
 public class TemperatureSensorEvent extends SensorEvent {
 
+    /**
+     * Температура в градусах Цельсия.
+     */
     @NotNull(message = "Температура в Цельсиях не может быть null")
     private Integer temperatureC;
 
+    /**
+     * Температура в градусах Фаренгейта.
+     */
     @NotNull(message = "Температура в Фаренгейтах не может быть null")
     private Integer temperatureF;
 

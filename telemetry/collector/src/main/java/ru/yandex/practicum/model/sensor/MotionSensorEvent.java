@@ -13,12 +13,21 @@ import lombok.ToString;
 @ToString(callSuper = true)
 public class MotionSensorEvent extends SensorEvent {
 
+    /**
+     * Качество связи.
+     */
     @NotNull(message = "Качество связи не может быть null")
     private Integer linkQuality;
 
+    /**
+     * Флаг обнаружения движения.
+     */
     @NotNull(message = "Обнаружение движения не может быть null")
     private Boolean motion;
 
+    /**
+     * Напряжение питания.
+     */
     @NotNull(message = "Напряжение не может быть null")
     private Integer voltage;
 
