@@ -16,6 +16,8 @@ public class KafkaProducerParam {
     private final SpecificRecordBase value;
 
     public boolean isValid() {
-        return topic != null && timestamp != null && key != null && value != null;
+        return topic != null && !topic.trim().isEmpty()
+                && key != null && !key.trim().isEmpty()
+                && value != null;
     }
 }

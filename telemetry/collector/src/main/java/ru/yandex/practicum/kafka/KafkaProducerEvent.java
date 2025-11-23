@@ -11,11 +11,6 @@ import ru.yandex.practicum.exception.KafkaSendException;
 
 import java.util.concurrent.CompletableFuture;
 
-/**
- * Компонент для отправки событий в Kafka.
- * Обеспечивает надежную асинхронную отправку сообщений с логированием на русском языке.
- * Поддерживает как синхронную, так и асинхронную отправку сообщений.
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -23,15 +18,6 @@ public class KafkaProducerEvent {
 
     private final KafkaTemplate<String, SpecificRecordBase> kafkaTemplate;
 
-    /**
-     * Отправляет сообщение в Kafka топик асинхронно.
-     *
-     * @param topic название топика
-     * @param key   ключ сообщения
-     * @param value значение сообщения (Avro объект)
-     * @throws IllegalArgumentException если параметры невалидны
-     * @throws KafkaSendException       если произошла ошибка при отправке
-     */
     public void send(String topic, String key, SpecificRecordBase value) {
         validateParameters(topic, key, value);
 
@@ -58,15 +44,6 @@ public class KafkaProducerEvent {
         }
     }
 
-    /**
-     * Отправляет сообщение в Kafka топик синхронно с ожиданием подтверждения.
-     *
-     * @param topic название топика
-     * @param key   ключ сообщения
-     * @param value значение сообщения (Avro объект)
-     * @throws IllegalArgumentException если параметры невалидны
-     * @throws KafkaSendException       если произошла ошибка при отправке
-     */
     public void sendSync(String topic, String key, SpecificRecordBase value) {
         validateParameters(topic, key, value);
 
@@ -90,13 +67,6 @@ public class KafkaProducerEvent {
         }
     }
 
-    /**
-     * Отправляет сообщение с расширенными параметрами.
-     *
-     * @param param параметры отправки сообщения
-     * @throws IllegalArgumentException если параметры невалидны
-     * @throws KafkaSendException       если произошла ошибка при отправке
-     */
     public void send(KafkaProducerParam param) {
         if (!param.isValid()) {
             log.error("Попытка отправки сообщения с невалидными параметрами: {}", param);
@@ -132,10 +102,6 @@ public class KafkaProducerEvent {
         }
     }
 
-    /**
-     * Выполняет принудительную синхронизацию и очистку буферов продюсера.
-     * Рекомендуется вызывать перед завершением работы приложения.
-     */
     public void flush() {
         try {
             kafkaTemplate.flush();
@@ -146,14 +112,6 @@ public class KafkaProducerEvent {
         }
     }
 
-    /**
-     * Валидирует параметры отправки сообщения.
-     *
-     * @param topic топик
-     * @param key   ключ
-     * @param value значение
-     * @throws IllegalArgumentException если параметры невалидны
-     */
     private void validateParameters(String topic, String key, SpecificRecordBase value) {
         if (topic == null || topic.trim().isEmpty()) {
             throw new IllegalArgumentException("Топик не может быть null или пустым");

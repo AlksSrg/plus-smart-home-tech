@@ -37,7 +37,7 @@ public class ScenarioAddedService extends HubEventService<ScenarioAddedEventAvro
                         .setSensorId(condition.getSensorId())
                         .setType(ConditionTypeAvro.valueOf(condition.getType().name()))
                         .setOperation(ConditionOperationAvro.valueOf(condition.getOperation().name()))
-                        .setValue(condition.getValue())
+                        .setValue(mapConditionValue(condition.getValue()))
                         .build())
                 .collect(Collectors.toList());
 
@@ -45,7 +45,7 @@ public class ScenarioAddedService extends HubEventService<ScenarioAddedEventAvro
                 .map(action -> DeviceActionAvro.newBuilder()
                         .setSensorId(action.getSensorId())
                         .setType(ActionTypeAvro.valueOf(action.getType().name()))
-                        .setValue(action.getValue())
+                        .setValue((Integer) mapActionValue(action.getValue()))
                         .build())
                 .collect(Collectors.toList());
 
@@ -60,5 +60,52 @@ public class ScenarioAddedService extends HubEventService<ScenarioAddedEventAvro
     protected HubEventAvro mapToAvroHubEvent(HubEvent hubEvent) {
         ScenarioAddedEventAvro payload = mapToAvro(hubEvent);
         return buildHubEventAvro(hubEvent, payload);
+    }
+
+    /**
+     * Преобразует значение условия в совместимый с Avro тип.
+     * По схеме: union{null, int, boolean} value = null
+     */
+    private Object mapConditionValue(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Integer || value instanceof Boolean) {
+            return value;
+        }
+        // Попытка преобразования строки в int
+        if (value instanceof String) {
+            try {
+                return Integer.parseInt((String) value);
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Неподдерживаемый тип значения условия: " + value.getClass());
+            }
+        }
+        throw new IllegalArgumentException("Неподдерживаемый тип значения условия: " + value.getClass());
+    }
+
+    /**
+     * Преобразует значение действия в совместимый с Avro тип.
+     * По схеме: union{null, int} value = null
+     */
+    private Object mapActionValue(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Integer) {
+            return value;
+        }
+        // Попытка преобразования в int
+        if (value instanceof String) {
+            try {
+                return Integer.parseInt((String) value);
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Неподдерживаемый тип значения действия: " + value.getClass());
+            }
+        }
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        throw new IllegalArgumentException("Неподдерживаемый тип значения действия: " + value.getClass());
     }
 }

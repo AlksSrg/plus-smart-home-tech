@@ -12,15 +12,12 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Map;
 
-/**
- * Сериализатор для преобразования Avro объектов в байтовые массивы.
- * Поддерживает все классы, унаследованные от SpecificRecordBase.
- */
 @Slf4j
 public class GeneralAvroSerializer implements Serializer<SpecificRecordBase> {
 
     @Override
     public void configure(Map<String, ?> configs, boolean isKey) {
+        // Конфигурация не требуется
     }
 
     @Override
@@ -40,13 +37,14 @@ public class GeneralAvroSerializer implements Serializer<SpecificRecordBase> {
                     topic, data.getSchema().getName());
             return out.toByteArray();
         } catch (IOException e) {
-            log.error("Ошибка сериализации Avro сообщения. Топик: {}, Схема: {}, Данные: {}",
-                    topic, data.getSchema(), data, e);
+            log.error("Ошибка сериализации Avro сообщения. Топик: {}, Схема: {}",
+                    topic, data.getSchema().getFullName(), e);
             throw new RuntimeException("Не удалось сериализовать Avro сообщение", e);
         }
     }
 
     @Override
     public void close() {
+        // Ресурсы не требуют закрытия
     }
 }
