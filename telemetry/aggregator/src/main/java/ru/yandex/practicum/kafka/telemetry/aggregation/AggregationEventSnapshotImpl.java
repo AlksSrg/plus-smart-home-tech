@@ -1,4 +1,4 @@
-package ru.yandex.practicum.aggregation;
+package ru.yandex.practicum.kafka.telemetry.aggregation;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

@@ -8,7 +8,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
-import ru.yandex.practicum.aggregation.AggregationEventSnapshot;
+import ru.yandex.practicum.kafka.telemetry.aggregation.AggregationEventSnapshot;
 import ru.yandex.practicum.kafka.telemetry.event.SensorEventAvro;
 import ru.yandex.practicum.kafka.telemetry.event.SensorsSnapshotAvro;
 
