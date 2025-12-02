@@ -51,6 +51,11 @@ public class KafkaProperties {
          * Максимальное количество записей для одного poll.
          */
         private Integer maxPollRecords = 100;
+
+        /**
+         * Топик для чтения событий датчиков.
+         */
+        private String sensorsTopic = "telemetry.sensors.v1";
     }
 
     /**
@@ -83,5 +88,10 @@ public class KafkaProperties {
          * Объем памяти для буферизации отправляемых сообщений.
          */
         private Integer bufferMemory = 33554432;
+
+        /**
+         * Топик для отправки снапшотов.
+         */
+        private String snapshotsTopic = "telemetry.snapshots.v1";
     }
 }
