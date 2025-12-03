@@ -2,9 +2,7 @@ package ru.yandex.practicum.kafka.telemetry.aggregation;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import ru.yandex.practicum.kafka.telemetry.event.SensorEventAvro;
-import ru.yandex.practicum.kafka.telemetry.event.SensorStateAvro;
-import ru.yandex.practicum.kafka.telemetry.event.SensorsSnapshotAvro;
+import ru.yandex.practicum.kafka.telemetry.event.*;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -20,7 +18,7 @@ public class AggregationEventSnapshotImpl implements AggregationEventSnapshot {
     @Override
     public Optional<SensorsSnapshotAvro> updateState(SensorEventAvro event) {
         // 1. Извлекаем данные из события
-        String hubId = extractHubId(event);
+        String hubId = event.getHubId();
         if (hubId == null || hubId.isEmpty()) {
             log.warn("Invalid hubId in event: {}", event);
             return Optional.empty();
@@ -36,7 +34,7 @@ public class AggregationEventSnapshotImpl implements AggregationEventSnapshot {
         Object eventPayload = event.getPayload();
 
         if (eventPayload == null) {
-            log.warn("Event payload is null: {}", event);
+            log.warn("Event payload is null for hub: {}, sensor: {}", hubId, sensorId);
             return Optional.empty();
         }
 
@@ -45,8 +43,8 @@ public class AggregationEventSnapshotImpl implements AggregationEventSnapshot {
 
         // 2. Получаем или создаем снапшот
         SensorsSnapshotAvro currentSnapshot = snapshots.computeIfAbsent(hubId, id -> {
-            log.debug("Creating new snapshot for hub: {}", hubId);
-            return createNewSnapshot(event, hubId, sensorId, eventTimestamp, eventPayload);
+            log.info("Creating FIRST snapshot for hub: {}", hubId);
+            return createNewSnapshot(hubId, sensorId, eventTimestamp, eventPayload);
         });
 
         // 3. Проверяем нужно ли обновлять
@@ -56,14 +54,14 @@ public class AggregationEventSnapshotImpl implements AggregationEventSnapshot {
         boolean shouldUpdate = false;
 
         if (existingState == null) {
-            // Новый датчик - всегда обновляем
-            log.debug("New sensor detected: {}", sensorId);
+            // Новый датчик в существующем снапшоте - всегда обновляем
+            log.debug("New sensor detected in existing snapshot: {}", sensorId);
             shouldUpdate = true;
         } else {
             long existingTimestamp = existingState.getTimestamp();
             Object existingData = existingState.getData();
 
-            // Сравниваем timestamp
+            // Сравниваем timestamp (принимаем только более новые события)
             if (eventTimestamp > existingTimestamp) {
                 log.debug("Newer timestamp: {} > {}", eventTimestamp, existingTimestamp);
                 shouldUpdate = true;
@@ -88,100 +86,90 @@ public class AggregationEventSnapshotImpl implements AggregationEventSnapshot {
             );
             snapshots.put(hubId, updatedSnapshot);
 
-            log.info("Snapshot updated - hub: {}, sensors: {}, time: {}",
+            log.info("Snapshot UPDATED - hub: {}, sensors: {}, time: {}",
                     hubId, updatedSnapshot.getSensorsState().size(), eventTimestamp);
             return Optional.of(updatedSnapshot);
         }
 
+        log.debug("No update needed for hub: {}, sensor: {}", hubId, sensorId);
         return Optional.empty();
     }
 
     /**
-     * Извлекает hubId из события
-     */
-    private String extractHubId(SensorEventAvro event) {
-        try {
-            // Прямой доступ к полю hubId через getter Avro
-            return event.getHubId().toString();
-        } catch (Exception e) {
-            log.error("Error extracting hubId from event: {}", event, e);
-            // Fallback: проверяем наличие поля через reflection если getter не сработал
-            try {
-                // Попытка получить поле через общий интерфейс Avro
-                Object hubIdObj = event.get("hubId");
-                if (hubIdObj != null) {
-                    return hubIdObj.toString();
-                }
-
-                // Альтернативные имена полей
-                hubIdObj = event.get("hub_id");
-                if (hubIdObj != null) {
-                    return hubIdObj.toString();
-                }
-            } catch (Exception ex) {
-                log.error("Fallback extraction also failed for event: {}", event, ex);
-            }
-            return null;
-        }
-    }
-
-    /**
-     * Безопасное сравнение данных
+     * Безопасное сравнение данных для Avro union
      */
     private boolean isDataEqual(Object data1, Object data2) {
         if (data1 == null && data2 == null) return true;
         if (data1 == null || data2 == null) return false;
 
-        // Прямое сравнение
+        // Прямое сравнение через equals
         if (data1.equals(data2)) {
             return true;
         }
 
-        // Для сложных объектов используем глубокое сравнение через Avro специфичные методы
-        try {
-            // Если это Avro объекты, сравниваем их строковое представление схемы
-            if (data1 instanceof org.apache.avro.specific.SpecificRecord &&
-                    data2 instanceof org.apache.avro.specific.SpecificRecord) {
-                return data1.toString().equals(data2.toString());
-            }
+        // Для Avro union типов сравниваем строковое представление
+        String str1 = data1.toString();
+        String str2 = data2.toString();
 
-            // Для примитивных типов
-            return String.valueOf(data1).equals(String.valueOf(data2));
-        } catch (Exception e) {
-            log.warn("Error comparing data: {} vs {}", data1, data2, e);
-            return false;
+        // Убираем лишние пробелы и сравниваем
+        boolean equal = str1.trim().equals(str2.trim());
+
+        if (!equal) {
+            log.debug("Data not equal: '{}' vs '{}'", str1, str2);
         }
+
+        return equal;
     }
 
-    private SensorsSnapshotAvro createNewSnapshot(SensorEventAvro event, String hubId,
-                                                  String sensorId, long timestamp, Object payload) {
+    /**
+     * Создает новый снапшот (для первого события хаба)
+     */
+    private SensorsSnapshotAvro createNewSnapshot(String hubId, String sensorId,
+                                                  long timestamp, Object payload) {
         Map<String, SensorStateAvro> sensorStates = new HashMap<>();
         sensorStates.put(sensorId, createSensorState(timestamp, payload));
 
+        // ВАЖНО: Для первого снапшота используем timestamp события
         return SensorsSnapshotAvro.newBuilder()
                 .setHubId(hubId)
-                .setTimestamp(timestamp)
+                .setTimestamp(timestamp) // Время первого события
                 .setSensorsState(sensorStates)
                 .build();
     }
 
+    /**
+     * Обновляет существующий снапшот
+     */
     private SensorsSnapshotAvro updateSnapshot(SensorsSnapshotAvro snapshot, String sensorId,
                                                long timestamp, Object payload) {
-        // Создаем копию map (важно для иммутабельности)
+        // Создаем копию map для обновления
         Map<String, SensorStateAvro> updatedStates = new HashMap<>(snapshot.getSensorsState());
         updatedStates.put(sensorId, createSensorState(timestamp, payload));
 
+        // ВАЖНО: Для обновленного снапшота используем timestamp самого нового события
+        long latestTimestamp = Math.max(snapshot.getTimestamp(), timestamp);
+
         return SensorsSnapshotAvro.newBuilder()
                 .setHubId(snapshot.getHubId())
-                .setTimestamp(timestamp) // Обновляем время снапшота
+                .setTimestamp(latestTimestamp) // Время самого свежего события
                 .setSensorsState(updatedStates)
                 .build();
     }
 
+    /**
+     * Создает состояние датчика
+     */
     private SensorStateAvro createSensorState(long timestamp, Object payload) {
         return SensorStateAvro.newBuilder()
                 .setTimestamp(timestamp)
                 .setData(payload)
                 .build();
+    }
+
+    /**
+     * Метод для отладки (можно удалить после фикса)
+     */
+    public Map<String, SensorsSnapshotAvro> getSnapshots() {
+        return new HashMap<>(snapshots);
     }
 }
