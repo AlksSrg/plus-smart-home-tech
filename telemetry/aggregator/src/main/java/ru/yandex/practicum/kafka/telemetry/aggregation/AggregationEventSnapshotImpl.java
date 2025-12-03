@@ -11,21 +11,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Реализация агрегации событий в снапшоты.
- */
 @Slf4j
 @Component
 public class AggregationEventSnapshotImpl implements AggregationEventSnapshot {
 
-    /**
-     * Хранилище снапшотов по ID хаба.
-     */
     private final Map<String, SensorsSnapshotAvro> snapshots = new ConcurrentHashMap<>();
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public Optional<SensorsSnapshotAvro> updateState(SensorEventAvro event) {
         if (event == null || event.getHubId() == null || event.getId() == null) {
@@ -35,36 +26,49 @@ public class AggregationEventSnapshotImpl implements AggregationEventSnapshot {
 
         String hubId = event.getHubId();
         String sensorId = event.getId();
+        long eventTimestamp = event.getTimestamp();
 
-        // Получаем или создаем новый снапшот
-        SensorsSnapshotAvro snapshot = snapshots.computeIfAbsent(hubId, id ->
+        SensorsSnapshotAvro currentSnapshot = snapshots.computeIfAbsent(hubId, id ->
                 createNewSnapshot(event)
         );
 
-        // Проверяем нужно ли обновлять состояние
-        SensorStateAvro existingState = snapshot.getSensorsState().get(sensorId);
+        Map<String, SensorStateAvro> currentStates = currentSnapshot.getSensorsState();
+        SensorStateAvro existingState = currentStates.get(sensorId);
+
         if (existingState != null) {
-            // Проверяем timestamp и данные
-            if (existingState.getTimestamp() > event.getTimestamp() ||
-                    (existingState.getTimestamp() == event.getTimestamp() &&
-                            dataEquals(existingState.getData(), event.getPayload()))) {
-                log.debug("Событие игнорировано для хаба {}, датчик {} (старый timestamp или те же данные)",
-                        hubId, sensorId);
+            long existingTimestamp = existingState.getTimestamp();
+
+            if (eventTimestamp < existingTimestamp) {
+                log.debug("Пропущено старое событие: датчик={}, новое время={}, старое время={}",
+                        sensorId, eventTimestamp, existingTimestamp);
+                return Optional.empty();
+            }
+
+            if (eventTimestamp == existingTimestamp &&
+                    isDataEqual(existingState.getData(), event.getPayload())) {
+                log.debug("Данные не изменились: датчик={}, время={}", sensorId, eventTimestamp);
                 return Optional.empty();
             }
         }
 
-        // Обновляем состояние
-        SensorsSnapshotAvro updatedSnapshot = updateSnapshot(snapshot, event);
+        SensorsSnapshotAvro updatedSnapshot = updateSnapshot(currentSnapshot, event, sensorId);
         snapshots.put(hubId, updatedSnapshot);
 
-        log.debug("Обновлен снапшот для хаба {}, датчик {}", hubId, sensorId);
+        log.debug("Обновлен снапшот: хаб={}, датчик={}, время={}",
+                hubId, sensorId, eventTimestamp);
         return Optional.of(updatedSnapshot);
     }
 
     /**
-     * Создает новый снапшот для хаба.
+     * Безопасное сравнение данных с учетом Avro union типов
      */
+    private boolean isDataEqual(Object data1, Object data2) {
+        if (data1 == null && data2 == null) return true;
+        if (data1 == null || data2 == null) return false;
+
+        return data1.equals(data2) || data1.toString().equals(data2.toString());
+    }
+
     private SensorsSnapshotAvro createNewSnapshot(SensorEventAvro event) {
         Map<String, SensorStateAvro> sensorStates = new HashMap<>();
         sensorStates.put(event.getId(), createSensorState(event));
@@ -76,12 +80,11 @@ public class AggregationEventSnapshotImpl implements AggregationEventSnapshot {
                 .build();
     }
 
-    /**
-     * Обновляет существующий снапшот.
-     */
-    private SensorsSnapshotAvro updateSnapshot(SensorsSnapshotAvro snapshot, SensorEventAvro event) {
+    private SensorsSnapshotAvro updateSnapshot(SensorsSnapshotAvro snapshot,
+                                               SensorEventAvro event,
+                                               String sensorId) {
         Map<String, SensorStateAvro> updatedStates = new HashMap<>(snapshot.getSensorsState());
-        updatedStates.put(event.getId(), createSensorState(event));
+        updatedStates.put(sensorId, createSensorState(event));
 
         return SensorsSnapshotAvro.newBuilder()
                 .setHubId(snapshot.getHubId())
@@ -90,22 +93,10 @@ public class AggregationEventSnapshotImpl implements AggregationEventSnapshot {
                 .build();
     }
 
-    /**
-     * Создает состояние датчика.
-     */
     private SensorStateAvro createSensorState(SensorEventAvro event) {
         return SensorStateAvro.newBuilder()
                 .setTimestamp(event.getTimestamp())
                 .setData(event.getPayload())
                 .build();
-    }
-
-    /**
-     * Сравнивает данные с учетом null.
-     */
-    private boolean dataEquals(Object data1, Object data2) {
-        if (data1 == null && data2 == null) return true;
-        if (data1 == null || data2 == null) return false;
-        return data1.equals(data2);
     }
 }
