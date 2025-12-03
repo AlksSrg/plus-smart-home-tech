@@ -6,7 +6,6 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import ru.yandex.practicum.kafka.serializer.GeneralAvroSerializer;
 import ru.yandex.practicum.kafka.telemetry.event.SensorsSnapshotAvro;
@@ -24,9 +23,6 @@ public class KafkaProducerConfig {
 
     private final KafkaProperties kafkaProperties;
 
-    /**
-     * Создает ProducerFactory.
-     */
     @Bean
     public ProducerFactory<String, SensorsSnapshotAvro> producerFactory() {
         Map<String, Object> props = new HashMap<>();
@@ -38,16 +34,10 @@ public class KafkaProducerConfig {
         props.put(ProducerConfig.BATCH_SIZE_CONFIG, kafkaProperties.getProducer().getBatchSize());
         props.put(ProducerConfig.LINGER_MS_CONFIG, kafkaProperties.getProducer().getLingerMs());
         props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, kafkaProperties.getProducer().getBufferMemory());
-        props.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, 60000); // 1 минута
+        props.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, 60000);
+
+        props.put("schema.registry.url", kafkaProperties.getSchemaRegistryUrl());
 
         return new DefaultKafkaProducerFactory<>(props);
-    }
-
-    /**
-     * Создает KafkaTemplate.
-     */
-    @Bean
-    public KafkaTemplate<String, SensorsSnapshotAvro> kafkaTemplate() {
-        return new KafkaTemplate<>(producerFactory());
     }
 }

@@ -45,9 +45,11 @@ public class AggregationEventSnapshotImpl implements AggregationEventSnapshot {
         SensorStateAvro existingState = snapshot.getSensorsState().get(sensorId);
         if (existingState != null) {
             // Проверяем timestamp и данные
-            if (existingState.getTimestamp() >= event.getTimestamp() ||
-                    dataEquals(existingState.getData(), event.getPayload())) {
-                log.debug("Событие игнорировано для хаба {}, датчик {}", hubId, sensorId);
+            if (existingState.getTimestamp() > event.getTimestamp() ||
+                    (existingState.getTimestamp() == event.getTimestamp() &&
+                            dataEquals(existingState.getData(), event.getPayload()))) {
+                log.debug("Событие игнорировано для хаба {}, датчик {} (старый timestamp или те же данные)",
+                        hubId, sensorId);
                 return Optional.empty();
             }
         }
