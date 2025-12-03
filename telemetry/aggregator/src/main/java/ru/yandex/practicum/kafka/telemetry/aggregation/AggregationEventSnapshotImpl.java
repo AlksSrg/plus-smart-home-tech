@@ -101,33 +101,28 @@ public class AggregationEventSnapshotImpl implements AggregationEventSnapshot {
      */
     private String extractHubId(SensorEventAvro event) {
         try {
-            // Используем рефлексию для надежности
-            for (String methodName : new String[]{"getHubId", "getHubid", "getHubID"}) {
-                try {
-                    java.lang.reflect.Method method = event.getClass().getMethod(methodName);
-                    Object result = method.invoke(event);
-                    if (result != null) {
-                        return result.toString();
-                    }
-                } catch (NoSuchMethodException e) {
-                    // Пробуем следующий вариант
-                    continue;
-                }
-            }
-
-            // Если стандартные методы не работают, пробуем toString
-            String str = event.toString();
-            if (str.contains("hubId=")) {
-                return str.split("hubId=")[1].split(",")[0].trim();
-            } else if (str.contains("hub_id=")) {
-                return str.split("hub_id=")[1].split(",")[0].trim();
-            }
-
+            // Прямой доступ к полю hubId через getter Avro
+            return event.getHubId().toString();
         } catch (Exception e) {
             log.error("Error extracting hubId from event: {}", event, e);
-        }
+            // Fallback: проверяем наличие поля через reflection если getter не сработал
+            try {
+                // Попытка получить поле через общий интерфейс Avro
+                Object hubIdObj = event.get("hubId");
+                if (hubIdObj != null) {
+                    return hubIdObj.toString();
+                }
 
-        return null;
+                // Альтернативные имена полей
+                hubIdObj = event.get("hub_id");
+                if (hubIdObj != null) {
+                    return hubIdObj.toString();
+                }
+            } catch (Exception ex) {
+                log.error("Fallback extraction also failed for event: {}", event, ex);
+            }
+            return null;
+        }
     }
 
     /**
@@ -137,13 +132,25 @@ public class AggregationEventSnapshotImpl implements AggregationEventSnapshot {
         if (data1 == null && data2 == null) return true;
         if (data1 == null || data2 == null) return false;
 
-        // Для Avro union используем equals и toString как fallback
+        // Прямое сравнение
         if (data1.equals(data2)) {
             return true;
         }
 
-        // Иногда equals не работает для Avro union, используем toString
-        return data1.toString().equals(data2.toString());
+        // Для сложных объектов используем глубокое сравнение через Avro специфичные методы
+        try {
+            // Если это Avro объекты, сравниваем их строковое представление схемы
+            if (data1 instanceof org.apache.avro.specific.SpecificRecord &&
+                    data2 instanceof org.apache.avro.specific.SpecificRecord) {
+                return data1.toString().equals(data2.toString());
+            }
+
+            // Для примитивных типов
+            return String.valueOf(data1).equals(String.valueOf(data2));
+        } catch (Exception e) {
+            log.warn("Error comparing data: {} vs {}", data1, data2, e);
+            return false;
+        }
     }
 
     private SensorsSnapshotAvro createNewSnapshot(SensorEventAvro event, String hubId,

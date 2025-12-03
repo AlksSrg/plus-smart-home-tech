@@ -21,7 +21,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Стартер агрегатора с ручным управлением циклом опроса Kafka.
- * Реализует Poll Loop согласно ТЗ.
  */
 @Slf4j
 @Component
@@ -65,7 +64,9 @@ public class AggregationStarter {
                 ConsumerRecords<String, SensorEventAvro> records =
                         kafkaConsumer.poll(Duration.ofMillis(100));
 
-                log.debug("Получено {} событий для обработки", records.count());
+                if (!records.isEmpty()) {
+                    log.debug("Получено {} событий для обработки", records.count());
+                }
 
                 for (ConsumerRecord<String, SensorEventAvro> record : records) {
                     processRecord(record);
@@ -98,6 +99,15 @@ public class AggregationStarter {
                 log.warn("Получена запись с null значением");
                 return;
             }
+
+            log.info("Получено событие - тип: {}, хаб: {}, датчик: {}, время: {}, ключ: {}, partition: {}, offset: {}",
+                    event.getSchema().getName(),
+                    event.getHubId(),
+                    event.getId(),
+                    event.getTimestamp(),
+                    record.key(),
+                    record.partition(),
+                    record.offset());
 
             log.debug("Обработка события: хаб={}, датчик={}, partition={}, offset={}",
                     event.getHubId(), event.getId(),
