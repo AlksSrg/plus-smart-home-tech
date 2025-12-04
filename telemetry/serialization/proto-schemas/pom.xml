@@ -11,6 +11,11 @@
 
     <artifactId>proto-schemas</artifactId>
 
+    <properties>
+        <proto.source.dir>${project.basedir}/src/main/proto</proto.source.dir>
+        <proto.output.dir>${project.build.directory}/generated-sources/protobuf</proto.output.dir>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>io.grpc</groupId>
@@ -40,9 +45,15 @@
             <plugin>
                 <groupId>io.github.ascopes</groupId>
                 <artifactId>protobuf-maven-plugin</artifactId>
+                <version>1.0.0</version>
 
                 <configuration>
                     <protocVersion>${protobuf.version}</protocVersion>
+                    <pluginId>grpc-java</pluginId>
+
+                    <protoSourceRoot>${proto.source.dir}</protoSourceRoot>
+                    <outputDirectory>${proto.output.dir}</outputDirectory>
+                    <clearOutputDirectory>true</clearOutputDirectory>
 
                     <binaryMavenPlugins>
                         <binaryMavenPlugin>
@@ -75,7 +86,7 @@
                         </goals>
                         <configuration>
                             <sources>
-                                <source>${project.build.directory}/generated-sources/protobuf</source>
+                                <source>${proto.output.dir}</source>
                             </sources>
                         </configuration>
                     </execution>
