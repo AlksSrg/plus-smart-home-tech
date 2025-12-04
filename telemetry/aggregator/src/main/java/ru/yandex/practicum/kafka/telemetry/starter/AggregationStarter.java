@@ -20,7 +20,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Стартер агрегатора с ручным управлением циклом опроса Kafka.
+ * Основной компонент для запуска и управления агрегатором событий.
+ * Обрабатывает события из Kafka и отправляет обновленные снапшоты.
  */
 @Slf4j
 @Component
@@ -36,50 +37,43 @@ public class AggregationStarter {
     private ExecutorService executorService;
 
     /**
-     * Запускает основной цикл обработки событий.
+     * Запускает основной цикл обработки событий из Kafka.
      */
     public void start() {
-        log.info("Aggregator запущен");
-        log.info("Подписка на: {}, отправка в: {}",
+        log.info("Запуск агрегатора");
+        log.info("Подписка на топик: {}, отправка в: {}",
                 kafkaProperties.getConsumer().getSensorsTopic(),
                 kafkaProperties.getProducer().getSnapshotsTopic());
 
-        // Подписываемся на топик
         kafkaConsumer.subscribe(Collections.singletonList(
                 kafkaProperties.getConsumer().getSensorsTopic()
         ));
 
-        // Запускаем обработку в отдельном потоке
         executorService = Executors.newSingleThreadExecutor();
         executorService.submit(this::pollLoop);
     }
 
     /**
-     * Основной цикл опроса Kafka.
+     * Основной цикл опроса Kafka и обработки событий.
      */
     private void pollLoop() {
         try {
             while (running.get()) {
-                // Получаем записи из Kafka
-                ConsumerRecords<String, SensorEventAvro> records =
-                        kafkaConsumer.poll(Duration.ofMillis(100));
+                ConsumerRecords<String, SensorEventAvro> records = kafkaConsumer.poll(Duration.ofMillis(100));
 
                 if (!records.isEmpty()) {
-                    log.debug("Получено {} событий для обработки", records.count());
+                    log.debug("Получено событий: {}", records.count());
                 }
 
                 for (ConsumerRecord<String, SensorEventAvro> record : records) {
                     processRecord(record);
                 }
 
-                // Фиксируем оффсеты
                 kafkaConsumer.commitSync();
-
             }
         } catch (WakeupException e) {
-            // Игнорируем при корректном shutdown
             if (running.get()) {
-                log.error("Неожиданный WakeupException", e);
+                log.error("Неожиданное прерывание цикла опроса", e);
             }
         } catch (Exception e) {
             log.error("Ошибка в цикле обработки событий", e);
@@ -96,43 +90,21 @@ public class AggregationStarter {
             SensorEventAvro event = record.value();
 
             if (event == null) {
-                log.warn("Получена запись с null значением");
+                log.warn("Получена запись с пустым значением");
                 return;
             }
 
-            log.info("Получено событие - тип: {}, хаб: {}, датчик: {}, время: {}, ключ: {}, partition: {}, offset: {}",
-                    event.getSchema().getName(),
-                    event.getHubId(),
-                    event.getId(),
-                    event.getTimestamp(),
-                    record.key(),
-                    record.partition(),
-                    record.offset());
-
-            log.debug("Обработка события: хаб={}, датчик={}, partition={}, offset={}",
-                    event.getHubId(), event.getId(),
-                    record.partition(), record.offset());
-
-            // Обновляем состояние
             Optional<SensorsSnapshotAvro> snapshot = aggregationEventSnapshot.updateState(event);
 
             if (snapshot.isPresent()) {
                 SensorsSnapshotAvro finalSnapshot = snapshot.get();
-
-                // Отправляем снапшот в Kafka
                 kafkaSnapshotProducer.sendSnapshot(finalSnapshot);
-
-                log.info("Обновлен снапшот для хаба {}, датчиков: {}",
-                        finalSnapshot.getHubId(),
-                        finalSnapshot.getSensorsState().size());
-            } else {
-                log.debug("Снапшот не изменился для хаба {}", event.getHubId());
+                log.info("Отправлен снапшот для хаба: {}", finalSnapshot.getHubId());
             }
 
         } catch (Exception e) {
-            log.error("Ошибка обработки записи из топика {}, partition {}, offset {}",
+            log.error("Ошибка обработки записи, топик: {}, partition: {}, offset: {}",
                     record.topic(), record.partition(), record.offset(), e);
-            // Не фиксируем оффсет при ошибке для повторной обработки
         }
     }
 
@@ -140,7 +112,7 @@ public class AggregationStarter {
      * Корректно завершает работу агрегатора.
      */
     public void shutdown() {
-        log.info("Начинаем корректное завершение работы агрегатора...");
+        log.info("Завершение работы агрегатора...");
         running.set(false);
 
         if (kafkaConsumer != null) {
@@ -153,22 +125,19 @@ public class AggregationStarter {
     }
 
     /**
-     * Корректное завершение всех ресурсов.
+     * Завершение всех ресурсов.
      */
     private void gracefulShutdown() {
         try {
-            // Фиксируем последние оффсеты
             if (kafkaConsumer != null) {
                 kafkaConsumer.commitSync();
             }
 
-            // Закрываем продюсер
             kafkaSnapshotProducer.close();
 
         } catch (Exception e) {
             log.error("Ошибка при завершении работы", e);
         } finally {
-            // Закрываем консьюмер
             if (kafkaConsumer != null) {
                 try {
                     kafkaConsumer.close();
@@ -178,7 +147,7 @@ public class AggregationStarter {
                 }
             }
 
-            log.info("Aggregator корректно завершил работу");
+            log.info("Агрегатор завершил работу");
         }
     }
 }

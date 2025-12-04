@@ -17,6 +17,7 @@ public class ShutdownHook {
 
     /**
      * Метод вызывается при завершении работы Spring контекста.
+     * Гарантирует корректное завершение работы агрегатора.
      */
     @PreDestroy
     public void onShutdown() {

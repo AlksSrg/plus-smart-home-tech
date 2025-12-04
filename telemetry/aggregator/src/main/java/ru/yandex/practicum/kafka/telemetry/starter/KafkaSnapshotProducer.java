@@ -13,7 +13,6 @@ import java.util.concurrent.ExecutionException;
 
 /**
  * Компонент для отправки снапшотов в Kafka.
- * Инкапсулирует логику отправки и обработки ошибок.
  */
 @Slf4j
 @Component
@@ -25,6 +24,8 @@ public class KafkaSnapshotProducer {
 
     /**
      * Отправляет снапшот в Kafka.
+     *
+     * @param snapshot снапшот для отправки
      */
     public void sendSnapshot(SensorsSnapshotAvro snapshot) {
         try {
@@ -36,11 +37,10 @@ public class KafkaSnapshotProducer {
 
             RecordMetadata metadata = kafkaTemplate.send(record).get().getRecordMetadata();
 
-            log.debug("Снапшот отправлен: хаб={}, partition={}, offset={}, timestamp={}",
+            log.debug("Снапшот отправлен: хаб={}, partition={}, offset={}",
                     snapshot.getHubId(),
                     metadata.partition(),
-                    metadata.offset(),
-                    metadata.timestamp());
+                    metadata.offset());
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -56,7 +56,6 @@ public class KafkaSnapshotProducer {
      */
     public void close() {
         try {
-            // Сбрасываем все сообщения из буфера
             kafkaTemplate.flush();
             log.info("Буферы KafkaProducer сброшены");
         } catch (Exception e) {

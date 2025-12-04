@@ -27,9 +27,7 @@ public class Aggregator {
         ConfigurableApplicationContext context = SpringApplication.run(Aggregator.class, args);
 
         AggregationStarter aggregator = context.getBean(AggregationStarter.class);
-
         context.registerShutdownHook();
-
         aggregator.start();
 
         log.info("Сервис Aggregator успешно запущен");
