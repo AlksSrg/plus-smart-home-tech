@@ -2,9 +2,7 @@ package ru.yandex.practicum.kafka.telemetry.aggregation;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import ru.yandex.practicum.kafka.telemetry.event.SensorEventAvro;
-import ru.yandex.practicum.kafka.telemetry.event.SensorStateAvro;
-import ru.yandex.practicum.kafka.telemetry.event.SensorsSnapshotAvro;
+import ru.yandex.practicum.kafka.telemetry.event.*;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -19,79 +17,93 @@ public class AggregationEventSnapshotImpl implements AggregationEventSnapshot {
 
     @Override
     public Optional<SensorsSnapshotAvro> updateState(SensorEventAvro event) {
-        // 1. Извлекаем данные из события
-        String hubId = event.getHubId();
-        if (hubId == null || hubId.isEmpty()) {
-            log.warn("Invalid hubId in event: {}", event);
-            return Optional.empty();
-        }
-
-        String sensorId = event.getId();
-        if (sensorId == null || sensorId.isEmpty()) {
-            log.warn("Invalid sensorId in event: {}", event);
-            return Optional.empty();
-        }
-
-        long eventTimestamp = event.getTimestamp();
-        Object eventPayload = event.getPayload();
-        if (eventPayload == null) {
-            log.warn("Event payload is null for hub: {}, sensor: {}", hubId, sensorId);
-            return Optional.empty();
-        }
-
-        log.debug("Processing event - hub: {}, sensor: {}, time: {}, payload type: {}",
-                hubId, sensorId, eventTimestamp, eventPayload.getClass().getSimpleName());
-
-        // 2. Получаем или создаем снапшот
-        SensorsSnapshotAvro currentSnapshot = snapshots.computeIfAbsent(hubId, id -> {
-            log.info("Creating FIRST snapshot for hub: {}", hubId);
-            return createNewSnapshot(hubId, sensorId, eventTimestamp, eventPayload);
-        });
-
-        // 3. Проверяем нужно ли обновлять
-        Map<String, SensorStateAvro> currentStates = currentSnapshot.getSensorsState();
-        SensorStateAvro existingState = currentStates.get(sensorId);
-        boolean shouldUpdate = false;
-
-        if (existingState == null) {
-            // Новый датчик в существующем снапшоте - всегда обновляем
-            log.debug("New sensor detected in existing snapshot: {}", sensorId);
-            shouldUpdate = true;
-        } else {
-            long existingTimestamp = existingState.getTimestamp();
-            Object existingData = existingState.getData();
-
-            // Сравниваем timestamp (принимаем только более новые события)
-            if (eventTimestamp > existingTimestamp) {
-                log.debug("Newer timestamp: {} > {}", eventTimestamp, existingTimestamp);
-                shouldUpdate = true;
+        try {
+            // 1. Извлекаем данные из события
+            String hubId = event.getHubId();
+            if (hubId == null || hubId.isEmpty()) {
+                log.warn("Invalid hubId in event: {}", event);
+                return Optional.empty();
             }
-            // Если время одинаковое, сравниваем данные
-            else if (eventTimestamp == existingTimestamp) {
-                if (!isDataEqual(existingData, eventPayload)) {
-                    log.debug("Same timestamp but different data");
-                    shouldUpdate = true;
-                } else {
-                    log.debug("Same timestamp and data - no update needed");
-                }
+
+            String sensorId = event.getId();
+            if (sensorId == null || sensorId.isEmpty()) {
+                log.warn("Invalid sensorId in event: {}", event);
+                return Optional.empty();
+            }
+
+            long eventTimestamp = event.getTimestamp();
+            Object eventPayload = event.getPayload();
+
+            // Проверяем тип payload для диагностики
+            if (eventPayload != null) {
+                log.debug("Processing event - hub: {}, sensor: {}, time: {}, payload class: {}",
+                        hubId, sensorId, eventTimestamp, eventPayload.getClass().getName());
             } else {
-                log.debug("Older timestamp: {} < {} - skipping", eventTimestamp, existingTimestamp);
+                log.warn("Event payload is null for hub: {}, sensor: {}", hubId, sensorId);
             }
-        }
 
-        // 4. Обновляем если нужно
-        if (shouldUpdate) {
-            SensorsSnapshotAvro updatedSnapshot = updateSnapshot(
-                    currentSnapshot, sensorId, eventTimestamp, eventPayload
-            );
-            snapshots.put(hubId, updatedSnapshot);
-            log.info("Snapshot UPDATED - hub: {}, sensors: {}, time: {}",
-                    hubId, updatedSnapshot.getSensorsState().size(), eventTimestamp);
-            return Optional.of(updatedSnapshot);
-        }
+            // 2. Получаем текущий снапшот или создаем новый
+            SensorsSnapshotAvro currentSnapshot = snapshots.get(hubId);
 
-        log.debug("No update needed for hub: {}, sensor: {}", hubId, sensorId);
-        return Optional.empty();
+            if (currentSnapshot == null) {
+                // Создаем первый снапшот для хаба
+                log.info("Creating FIRST snapshot for hub: {}", hubId);
+                SensorsSnapshotAvro newSnapshot = createNewSnapshot(hubId, sensorId, eventTimestamp, eventPayload);
+                snapshots.put(hubId, newSnapshot);
+                log.info("First snapshot created for hub: {}, sensors: 1, time: {}",
+                        hubId, eventTimestamp);
+                return Optional.of(newSnapshot);
+            }
+
+            // 3. Проверяем нужно ли обновлять существующий снапшот
+            Map<String, SensorStateAvro> currentStates = currentSnapshot.getSensorsState();
+            SensorStateAvro existingState = currentStates.get(sensorId);
+            boolean shouldUpdate = false;
+
+            if (existingState == null) {
+                // Новый датчик в существующем снапшоте - всегда обновляем
+                log.debug("New sensor detected in existing snapshot: {}", sensorId);
+                shouldUpdate = true;
+            } else {
+                long existingTimestamp = existingState.getTimestamp();
+                Object existingData = existingState.getData();
+
+                // Сравниваем timestamp (принимаем только более новые события)
+                if (eventTimestamp > existingTimestamp) {
+                    log.debug("Newer timestamp: {} > {}", eventTimestamp, existingTimestamp);
+                    shouldUpdate = true;
+                }
+                // Если время одинаковое, сравниваем данные
+                else if (eventTimestamp == existingTimestamp) {
+                    if (!isDataEqual(existingData, eventPayload)) {
+                        log.debug("Same timestamp but different data");
+                        shouldUpdate = true;
+                    } else {
+                        log.debug("Same timestamp and data - no update needed");
+                    }
+                } else {
+                    log.debug("Older timestamp: {} < {} - skipping", eventTimestamp, existingTimestamp);
+                }
+            }
+
+            // 4. Обновляем если нужно
+            if (shouldUpdate) {
+                SensorsSnapshotAvro updatedSnapshot = updateSnapshot(
+                        currentSnapshot, sensorId, eventTimestamp, eventPayload
+                );
+                snapshots.put(hubId, updatedSnapshot);
+                log.info("Snapshot UPDATED - hub: {}, sensors: {}, time: {}",
+                        hubId, updatedSnapshot.getSensorsState().size(), eventTimestamp);
+                return Optional.of(updatedSnapshot);
+            }
+
+            log.debug("No update needed for hub: {}, sensor: {}", hubId, sensorId);
+            return Optional.empty();
+
+        } catch (Exception e) {
+            log.error("Error processing event: {}", event, e);
+            return Optional.empty();
+        }
     }
 
     /**
@@ -125,7 +137,6 @@ public class AggregationEventSnapshotImpl implements AggregationEventSnapshot {
         Map<String, SensorStateAvro> sensorStates = new HashMap<>();
         sensorStates.put(sensorId, createSensorState(timestamp, payload));
 
-        // ВАЖНО: Для первого снапшота используем timestamp события
         return SensorsSnapshotAvro.newBuilder()
                 .setHubId(hubId)
                 .setTimestamp(timestamp) // Время первого события
