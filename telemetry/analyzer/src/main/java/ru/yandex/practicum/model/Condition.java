@@ -6,9 +6,13 @@ import lombok.experimental.FieldDefaults;
 import ru.yandex.practicum.kafka.telemetry.event.ConditionOperationAvro;
 import ru.yandex.practicum.kafka.telemetry.event.ConditionTypeAvro;
 
+/**
+ * Сущность условия сценария.
+ * Определяет условие, которое должно быть выполнено для активации сценария.
+ * Связь с Scenario осуществляется через сущность ScenarioCondition.
+ */
 @Entity
 @Table(name = "conditions")
-@SecondaryTable(name = "scenario_conditions", pkJoinColumns = @PrimaryKeyJoinColumn(name = "condition_id"))
 @Getter
 @Setter
 @ToString
@@ -17,6 +21,7 @@ import ru.yandex.practicum.kafka.telemetry.event.ConditionTypeAvro;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class Condition {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
@@ -32,12 +37,4 @@ public class Condition {
 
     @Column(name = "value")
     int value;
-
-    @ManyToOne
-    @JoinColumn(table = "scenario_conditions", name = "scenario_id")
-    Scenario scenario;
-
-    @ManyToOne
-    @JoinColumn(table = "scenario_conditions", name = "sensor_id")
-    Sensor sensor;
 }

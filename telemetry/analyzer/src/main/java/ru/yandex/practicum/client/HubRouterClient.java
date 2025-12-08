@@ -9,6 +9,7 @@ import ru.yandex.practicum.grpc.telemetry.hubrouter.HubRouterControllerGrpc;
 @Slf4j
 @Service
 public class HubRouterClient {
+
     private final HubRouterControllerGrpc.HubRouterControllerBlockingStub hubRouterClient;
 
     public HubRouterClient(

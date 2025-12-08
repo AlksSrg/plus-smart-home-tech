@@ -5,8 +5,11 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.*;
-import lombok.experimental.FieldDefaults;
 
+/**
+ * Сущность датчика (устройства).
+ * Представляет датчик, подключенный к хабу умного дома.
+ */
 @Entity
 @Table(name = "sensors")
 @Getter
@@ -15,12 +18,12 @@ import lombok.experimental.FieldDefaults;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@FieldDefaults(level = AccessLevel.PRIVATE)
 public class Sensor {
+
     @Id
     @Column(name = "id")
-    String id;
+    private String id;
 
     @Column(name = "hub_id", nullable = false)
-    String hubId;
+    private String hubId;
 }

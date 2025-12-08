@@ -2,8 +2,11 @@ package ru.yandex.practicum.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import lombok.experimental.FieldDefaults;
 
+/**
+ * Сущность сценария умного дома.
+ * Определяет набор условий и действий для автоматизации.
+ */
 @Entity
 @Table(name = "scenarios", uniqueConstraints = @UniqueConstraint(columnNames = {"hub_id", "name"}))
 @Getter
@@ -12,15 +15,15 @@ import lombok.experimental.FieldDefaults;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@FieldDefaults(level = AccessLevel.PRIVATE)
 public class Scenario {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    Long id;
+    private Long id;
 
     @Column(name = "hub_id", nullable = false)
-    String hubId;
+    private String hubId;
 
     @Column(name = "name", nullable = false)
-    String name;
+    private String name;
 }

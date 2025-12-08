@@ -11,6 +11,7 @@ import ru.yandex.practicum.repository.SensorRepository;
 @Component
 @RequiredArgsConstructor
 public class DeviceRemovedHandler implements HubEventHandler {
+
     private final SensorRepository sensorRepository;
 
     @Override
@@ -28,6 +29,6 @@ public class DeviceRemovedHandler implements HubEventHandler {
 
     @Override
     public String getEventType() {
-        return DeviceRemovedEventAvro.class.getSimpleName();
+        return "DeviceRemovedEventAvro";
     }
 }

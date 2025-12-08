@@ -5,34 +5,29 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.kafka.telemetry.event.*;
-import ru.yandex.practicum.model.Action;
-import ru.yandex.practicum.model.Condition;
-import ru.yandex.practicum.model.Scenario;
+import ru.yandex.practicum.model.*;
 import ru.yandex.practicum.repository.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
  * Обработчик событий добавления нового сценария.
- * Сохраняет сценарий с его условиями и действиями в базе данных.
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class ScenarioAddedHandler implements HubEventHandler {
+
     private final ScenarioRepository scenarioRepository;
     private final SensorRepository sensorRepository;
     private final ActionRepository actionRepository;
     private final ConditionRepository conditionRepository;
+    private final ScenarioConditionRepository scenarioConditionRepository;
+    private final ScenarioActionRepository scenarioActionRepository;
 
-    /**
-     * Обрабатывает событие добавления сценария.
-     * Сохраняет или обновляет сценарий с его условиями и действиями.
-     *
-     * @param event событие добавления сценария
-     */
     @Override
     @Transactional
     public void handleEvent(HubEventAvro event) {
@@ -42,7 +37,7 @@ public class ScenarioAddedHandler implements HubEventHandler {
 
         log.info("Получено событие добавления сценария: '{}' для хаба: {}", scenarioName, hubId);
 
-        // Собираем все ID датчиков из условий и действий
+        // Собираем все ID датчиков
         Set<String> allSensorIds = collectAllSensorIds(scenarioAddedEventAvro);
 
         // Проверяем существование всех датчиков
@@ -53,45 +48,31 @@ public class ScenarioAddedHandler implements HubEventHandler {
 
         // Находим или создаем сценарий
         Scenario scenario = scenarioRepository.findByHubIdAndName(hubId, scenarioName)
-                .orElseGet(() -> createNewScenario(hubId, scenarioName));
+                .orElseGet(() -> {
+                    Scenario newScenario = new Scenario();
+                    newScenario.setHubId(hubId);
+                    newScenario.setName(scenarioName);
+                    return scenarioRepository.save(newScenario);
+                });
 
-        // Удаляем старые условия и действия (для обновления сценария)
-        conditionRepository.deleteByScenario(scenario);
-        actionRepository.deleteByScenario(scenario);
+        // Удаляем старые связи
+        scenarioConditionRepository.deleteByScenario(scenario);
+        scenarioActionRepository.deleteByScenario(scenario);
 
-        // Сохраняем новые условия
-        List<Condition> conditions = mapToConditions(scenarioAddedEventAvro.getConditions(), scenario);
-        if (!conditions.isEmpty()) {
-            conditionRepository.saveAll(conditions);
-            log.info("Сохранено {} условий для сценария: '{}'", conditions.size(), scenarioName);
-        }
+        // Сохраняем условия
+        saveConditions(scenarioAddedEventAvro.getConditions(), scenario);
 
-        // Сохраняем новые действия
-        List<Action> actions = mapToActions(scenarioAddedEventAvro.getActions(), scenario);
-        if (!actions.isEmpty()) {
-            actionRepository.saveAll(actions);
-            log.info("Сохранено {} действий для сценария: '{}'", actions.size(), scenarioName);
-        }
+        // Сохраняем действия
+        saveActions(scenarioAddedEventAvro.getActions(), scenario);
 
         log.info("Сценарий '{}' успешно обновлен для хаба: {}", scenarioName, hubId);
     }
 
-    /**
-     * Возвращает тип обрабатываемого события.
-     *
-     * @return тип события "ScenarioAddedEventAvro"
-     */
     @Override
     public String getEventType() {
-        return ScenarioAddedEventAvro.class.getSimpleName();
+        return "ScenarioAddedEventAvro";
     }
 
-    /**
-     * Собирает все идентификаторы датчиков из условий и действий сценария.
-     *
-     * @param scenarioAddedEventAvro событие добавления сценария
-     * @return набор идентификаторов датчиков
-     */
     private Set<String> collectAllSensorIds(ScenarioAddedEventAvro scenarioAddedEventAvro) {
         Set<String> sensorIds = scenarioAddedEventAvro.getActions().stream()
                 .map(DeviceActionAvro::getSensorId)
@@ -104,70 +85,65 @@ public class ScenarioAddedHandler implements HubEventHandler {
         return sensorIds;
     }
 
-    /**
-     * Создает новый сценарий.
-     *
-     * @param hubId        идентификатор хаба
-     * @param scenarioName название сценария
-     * @return созданный сценарий
-     */
-    private Scenario createNewScenario(String hubId, String scenarioName) {
-        Scenario newScenario = Scenario.builder()
-                .name(scenarioName)
-                .hubId(hubId)
-                .build();
-        return scenarioRepository.save(newScenario);
+    private void saveConditions(List<ScenarioConditionAvro> conditionsAvro, Scenario scenario) {
+        List<Condition> conditions = new ArrayList<>();
+        List<ScenarioCondition> scenarioConditions = new ArrayList<>();
+
+        for (ScenarioConditionAvro conditionAvro : conditionsAvro) {
+            // Создаем условие
+            Condition condition = new Condition();
+            condition.setType(conditionAvro.getType());
+            condition.setOperation(conditionAvro.getOperation());
+            condition.setValue(mapConditionValue(conditionAvro.getValue()));
+
+            Condition savedCondition = conditionRepository.save(condition);
+            conditions.add(savedCondition);
+
+            // Находим датчик
+            Sensor sensor = sensorRepository.findById(conditionAvro.getSensorId())
+                    .orElseThrow(() -> new IllegalArgumentException("Датчик не найден: " + conditionAvro.getSensorId()));
+
+            // Создаем связь
+            ScenarioCondition scenarioCondition = new ScenarioCondition();
+            scenarioCondition.setScenario(scenario);
+            scenarioCondition.setCondition(savedCondition);
+            scenarioCondition.setSensor(sensor);
+            scenarioConditions.add(scenarioCondition);
+        }
+
+        scenarioConditionRepository.saveAll(scenarioConditions);
+        log.info("Сохранено {} условий для сценария: '{}'", conditions.size(), scenario.getName());
     }
 
-    /**
-     * Преобразует условия из Avro формата в сущности Condition.
-     *
-     * @param conditionsAvro условия в формате Avro
-     * @param scenario       сценарий, к которому относятся условия
-     * @return список сущностей Condition
-     */
-    private List<Condition> mapToConditions(List<ScenarioConditionAvro> conditionsAvro, Scenario scenario) {
-        return conditionsAvro.stream()
-                .map(conditionAvro -> Condition.builder()
-                        .sensor(sensorRepository.findById(conditionAvro.getSensorId())
-                                .orElseThrow(() -> new IllegalArgumentException(
-                                        "Датчик не найден: " + conditionAvro.getSensorId())))
-                        .operation(conditionAvro.getOperation())
-                        .scenario(scenario)
-                        .type(conditionAvro.getType())
-                        .value(mapConditionValue(conditionAvro.getValue()))
-                        .build())
-                .collect(Collectors.toList());
+    private void saveActions(List<DeviceActionAvro> actionsAvro, Scenario scenario) {
+        List<Action> actions = new ArrayList<>();
+        List<ScenarioAction> scenarioActions = new ArrayList<>();
+
+        for (DeviceActionAvro actionAvro : actionsAvro) {
+            // Создаем действие
+            Action action = new Action();
+            action.setType(actionAvro.getType());
+            action.setValue(actionAvro.getValue() != null ? actionAvro.getValue() : 0);
+
+            Action savedAction = actionRepository.save(action);
+            actions.add(savedAction);
+
+            // Находим датчик
+            Sensor sensor = sensorRepository.findById(actionAvro.getSensorId())
+                    .orElseThrow(() -> new IllegalArgumentException("Датчик не найден: " + actionAvro.getSensorId()));
+
+            // Создаем связь
+            ScenarioAction scenarioAction = new ScenarioAction();
+            scenarioAction.setScenario(scenario);
+            scenarioAction.setAction(savedAction);
+            scenarioAction.setSensor(sensor);
+            scenarioActions.add(scenarioAction);
+        }
+
+        scenarioActionRepository.saveAll(scenarioActions);
+        log.info("Сохранено {} действий для сценария: '{}'", actions.size(), scenario.getName());
     }
 
-    /**
-     * Преобразует действия из Avro формата в сущности Action.
-     *
-     * @param actionsAvro действия в формате Avro
-     * @param scenario    сценарий, к которому относятся действия
-     * @return список сущностей Action
-     */
-    private List<Action> mapToActions(List<DeviceActionAvro> actionsAvro, Scenario scenario) {
-        return actionsAvro.stream()
-                .map(actionAvro -> Action.builder()
-                        .sensor(sensorRepository.findById(actionAvro.getSensorId())
-                                .orElseThrow(() -> new IllegalArgumentException(
-                                        "Датчик не найден: " + actionAvro.getSensorId())))
-                        .scenario(scenario)
-                        .type(actionAvro.getType())
-                        .value(actionAvro.getValue() == null ? 0 : actionAvro.getValue())
-                        .build())
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * Преобразует значение условия в целое число.
-     * Поддерживает Integer и Boolean типы.
-     *
-     * @param value значение условия
-     * @return целочисленное значение
-     * @throws IllegalArgumentException если тип значения не поддерживается
-     */
     private int mapConditionValue(Object value) {
         if (value instanceof Integer) {
             return (int) value;
