@@ -5,9 +5,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.kafka.telemetry.event.HubEventAvro;
 import ru.yandex.practicum.kafka.telemetry.event.ScenarioRemovedEventAvro;
-import ru.yandex.practicum.repository.ActionRepository;
-import ru.yandex.practicum.repository.ConditionRepository;
-import ru.yandex.practicum.repository.ScenarioRepository;
+import ru.yandex.practicum.model.ScenarioAction;
+import ru.yandex.practicum.repository.*;
+
+import java.util.List;
 
 @Slf4j
 @Component
@@ -16,6 +17,8 @@ public class ScenarioRemovedHandler implements HubEventHandler {
     private final ScenarioRepository scenarioRepository;
     private final ActionRepository actionRepository;
     private final ConditionRepository conditionRepository;
+    private final ScenarioActionRepository scenarioActionRepository;
+    private final ScenarioConditionRepository scenarioConditionRepository;
 
     @Override
     public void handleEvent(HubEventAvro event) {
@@ -26,8 +29,18 @@ public class ScenarioRemovedHandler implements HubEventHandler {
         scenarioRepository.findByHubIdAndName(event.getHubId(), scenarioRemovedEventAvro.getName())
                 .ifPresentOrElse(
                         scenario -> {
-                            actionRepository.deleteByScenario(scenario);
-                            conditionRepository.deleteByScenario(scenario);
+                            List<ScenarioAction> scenarioActions = scenarioActionRepository.findByScenario(scenario);
+
+                            // Удаляем каждое действие
+                            for (ScenarioAction scenarioAction : scenarioActions) {
+                                actionRepository.delete(scenarioAction.getAction());
+                            }
+
+                            // Удаляем связи из промежуточной таблицы
+                            scenarioActionRepository.deleteByScenario(scenario);
+                            scenarioConditionRepository.deleteByScenario(scenario);
+
+                            // Теперь можно удалить сценарий
                             scenarioRepository.delete(scenario);
                             log.info("Сценарий '{}' успешно удален для хаба: {}",
                                     scenarioRemovedEventAvro.getName(), event.getHubId());
