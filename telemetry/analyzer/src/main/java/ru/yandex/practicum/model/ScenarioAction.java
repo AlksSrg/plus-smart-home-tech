@@ -4,30 +4,34 @@ import jakarta.persistence.*;
 import lombok.*;
 
 /**
- * Сущность для связи сценария с действием.
- * Представляет связь многие-ко-многим между Scenario и Action.
+ * Сущность для связи сценария с действием и датчиком.
+ * Представляет связь многие-ко-многим между Scenario, Sensor и Action
+ * с использованием составного идентификатора.
  */
 @Entity
 @Table(name = "scenario_actions")
 @Getter
 @Setter
-@NoArgsConstructor
+@Builder
 @AllArgsConstructor
+@NoArgsConstructor
 public class ScenarioAction {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @EmbeddedId
+    private ScenarioActionId id;
 
-    @ManyToOne
+    @MapsId("scenarioId")
     @JoinColumn(name = "scenario_id")
+    @ManyToOne(fetch = FetchType.LAZY)
     private Scenario scenario;
 
-    @ManyToOne
-    @JoinColumn(name = "action_id")
-    private Action action;
-
-    @ManyToOne
+    @MapsId("sensorId")
     @JoinColumn(name = "sensor_id")
+    @ManyToOne(fetch = FetchType.LAZY)
     private Sensor sensor;
+
+    @MapsId("actionId")
+    @JoinColumn(name = "action_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Action action;
 }

@@ -1,8 +1,10 @@
 package ru.yandex.practicum.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.model.Scenario;
 import ru.yandex.practicum.model.ScenarioAction;
+import ru.yandex.practicum.model.ScenarioActionId;
 
 import java.util.List;
 
@@ -10,7 +12,8 @@ import java.util.List;
  * Репозиторий для работы с сущностью ScenarioAction.
  * Предоставляет методы для работы со связями сценариев и действий.
  */
-public interface ScenarioActionRepository extends JpaRepository<ScenarioAction, Long> {
+@Repository
+public interface ScenarioActionRepository extends JpaRepository<ScenarioAction, ScenarioActionId> {
 
     /**
      * Находит все связи действий для указанного сценария.
@@ -22,6 +25,7 @@ public interface ScenarioActionRepository extends JpaRepository<ScenarioAction, 
 
     /**
      * Удаляет все связи действий для указанного сценария.
+     * Используется при удалении или обновлении сценария.
      *
      * @param scenario сценарий
      */

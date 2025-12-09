@@ -36,5 +36,5 @@ public class Condition {
     ConditionOperationAvro operation;
 
     @Column(name = "value")
-    int value;
+    Integer value;
 }

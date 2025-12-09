@@ -1,8 +1,10 @@
 package ru.yandex.practicum.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.model.Scenario;
 import ru.yandex.practicum.model.ScenarioCondition;
+import ru.yandex.practicum.model.ScenarioConditionId;
 
 import java.util.List;
 
@@ -10,7 +12,8 @@ import java.util.List;
  * Репозиторий для работы с сущностью ScenarioCondition.
  * Предоставляет методы для работы со связями сценариев и условий.
  */
-public interface ScenarioConditionRepository extends JpaRepository<ScenarioCondition, Long> {
+@Repository
+public interface ScenarioConditionRepository extends JpaRepository<ScenarioCondition, ScenarioConditionId> {
 
     /**
      * Находит все связи условий для указанного сценария.
@@ -22,6 +25,7 @@ public interface ScenarioConditionRepository extends JpaRepository<ScenarioCondi
 
     /**
      * Удаляет все связи условий для указанного сценария.
+     * Используется при удалении или обновлении сценария.
      *
      * @param scenario сценарий
      */

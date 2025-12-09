@@ -4,30 +4,34 @@ import jakarta.persistence.*;
 import lombok.*;
 
 /**
- * Сущность для связи сценария с условием.
- * Представляет связь многие-ко-многим между Scenario и Condition.
+ * Сущность для связи сценария с условием и датчиком.
+ * Представляет связь многие-ко-многим между Scenario, Sensor и Condition
+ * с использованием составного идентификатора.
  */
 @Entity
 @Table(name = "scenario_conditions")
 @Getter
 @Setter
-@NoArgsConstructor
+@Builder
 @AllArgsConstructor
+@NoArgsConstructor
 public class ScenarioCondition {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @EmbeddedId
+    private ScenarioConditionId id;
 
-    @ManyToOne
+    @MapsId("scenarioId")
     @JoinColumn(name = "scenario_id")
+    @ManyToOne(fetch = FetchType.LAZY)
     private Scenario scenario;
 
-    @ManyToOne
-    @JoinColumn(name = "condition_id")
-    private Condition condition;
-
-    @ManyToOne
+    @MapsId("sensorId")
     @JoinColumn(name = "sensor_id")
+    @ManyToOne(fetch = FetchType.LAZY)
     private Sensor sensor;
+
+    @MapsId("conditionId")
+    @JoinColumn(name = "condition_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Condition condition;
 }
