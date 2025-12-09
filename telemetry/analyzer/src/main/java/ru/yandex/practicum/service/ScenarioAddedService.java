@@ -27,7 +27,9 @@ public class ScenarioAddedService implements HubEventService {
     private final ScenarioConditionRepository scenarioConditionRepository;
 
     /**
-     * @return имя payload-класса, который обслуживает данный сервис
+     * Возвращает тип полезной нагрузки, который обрабатывает этот сервис.
+     *
+     * @return имя класса полезной нагрузки
      */
     @Override
     public String getPayloadType() {
@@ -36,46 +38,38 @@ public class ScenarioAddedService implements HubEventService {
 
     /**
      * Обрабатывает событие добавления сценария.
+     * Сохраняет сценарий, его условия и действия в базу данных.
      *
-     * @param hub событие хаба, содержащее ScenarioAddedEventAvro
+     * @param hub событие добавления сценария
      */
     @Transactional
     @Override
     public void handle(HubEventAvro hub) {
-
         ScenarioAddedEventAvro avro = (ScenarioAddedEventAvro) hub.getPayload();
-        log.info("Добавление сценария '{}' для хаба {}", avro.getName(), hub.getHubId());
 
         Scenario scenario = scenarioRepository
                 .findByHubIdAndName(hub.getHubId(), avro.getName())
-                .orElseGet(() -> {
-                    log.debug("Создаётся новый сценарий: {}", avro.getName());
-                    return scenarioRepository.save(
-                            Scenario.builder()
-                                    .hubId(hub.getHubId())
-                                    .name(avro.getName())
-                                    .build()
-                    );
-                });
+                .orElseGet(() -> scenarioRepository.save(
+                        Scenario.builder()
+                                .hubId(hub.getHubId())
+                                .name(avro.getName())
+                                .build()
+                ));
 
-        // Обновляем имя, если оно изменилось
         if (!scenario.getName().equals(avro.getName())) {
             scenario.setName(avro.getName());
             scenarioRepository.save(scenario);
         }
 
-        // Удаляем старые условия и действия
         scenarioConditionRepository.deleteByScenario(scenario);
         scenarioActionRepository.deleteByScenario(scenario);
 
-        // Сохранение условий
         avro.getConditions().forEach(condAvro -> {
             Sensor sensor = getOrCreateSensor(condAvro.getSensorId(), hub.getHubId());
             Condition condition = saveCondition(condAvro);
             saveScenarioCondition(scenario, sensor, condition);
         });
 
-        // Сохранение действий
         avro.getActions().forEach(actionAvro -> {
             Sensor sensor = getOrCreateSensor(actionAvro.getSensorId(), hub.getHubId());
             Action action = saveAction(actionAvro);
@@ -87,33 +81,30 @@ public class ScenarioAddedService implements HubEventService {
     }
 
     /**
-     * Получает или создаёт новый датчик.
+     * Получает существующий датчик или создает новый.
      *
-     * @param sensorId ID датчика
-     * @param hubId    ID хаба
-     * @return существующий или новый Sensor
+     * @param sensorId идентификатор датчика
+     * @param hubId идентификатор хаба
+     * @return найденный или созданный датчик
      */
     private Sensor getOrCreateSensor(String sensorId, String hubId) {
         return sensorRepository.findById(sensorId)
-                .orElseGet(() ->
-                        sensorRepository.save(
-                                Sensor.builder()
-                                        .id(sensorId)
-                                        .hubId(hubId)
-                                        .build()
-                        )
-                );
+                .orElseGet(() -> sensorRepository.save(
+                        Sensor.builder()
+                                .id(sensorId)
+                                .hubId(hubId)
+                                .build()
+                ));
     }
 
     /**
-     * Создаёт и сохраняет Condition из AVRO-объекта.
+     * Сохраняет условие сценария в базу данных.
      *
-     * @param conditionAvro условие из события
-     * @return сохранённая сущность Condition
+     * @param conditionAvro условие в формате Avro
+     * @return сохраненное условие
      */
     private Condition saveCondition(
             ru.yandex.practicum.kafka.telemetry.event.ScenarioConditionAvro conditionAvro) {
-
         return conditionRepository.save(
                 Condition.builder()
                         .type(conditionAvro.getType())
@@ -124,10 +115,10 @@ public class ScenarioAddedService implements HubEventService {
     }
 
     /**
-     * Создаёт и сохраняет Action из AVRO-объекта.
+     * Сохраняет действие сценария в базу данных.
      *
-     * @param actionAvro действие из события
-     * @return сохранённая сущность Action
+     * @param actionAvro действие в формате Avro
+     * @return сохраненное действие
      */
     private Action saveAction(DeviceActionAvro actionAvro) {
         return actionRepository.save(
@@ -139,10 +130,10 @@ public class ScenarioAddedService implements HubEventService {
     }
 
     /**
-     * Сохраняет связь сценарий—датчик—условие.
+     * Сохраняет связь между сценарием, датчиком и условием.
      *
-     * @param scenario  сценарий
-     * @param sensor    датчик
+     * @param scenario сценарий
+     * @param sensor датчик
      * @param condition условие
      */
     private void saveScenarioCondition(Scenario scenario,
@@ -162,16 +153,15 @@ public class ScenarioAddedService implements HubEventService {
     }
 
     /**
-     * Сохраняет связь сценарий—датчик—действие.
+     * Сохраняет связь между сценарием, датчиком и действием.
      *
      * @param scenario сценарий
-     * @param sensor   датчик
-     * @param action   действие
+     * @param sensor датчик
+     * @param action действие
      */
     private void saveScenarioAction(Scenario scenario,
                                     Sensor sensor,
                                     Action action) {
-
         scenarioActionRepository.save(
                 ScenarioAction.builder()
                         .scenario(scenario)
@@ -186,10 +176,10 @@ public class ScenarioAddedService implements HubEventService {
     }
 
     /**
-     * Приводит значение условия (Boolean/Integer) к Integer.
+     * Преобразует значение условия в целое число.
      *
-     * @param value исходное значение из AVRO
-     * @return число (0/1 или integer)
+     * @param value исходное значение
+     * @return преобразованное целое число
      */
     private Integer asInteger(Object value) {
         if (value instanceof Boolean b) return b ? 1 : 0;

@@ -27,7 +27,6 @@ public class DeviceAddedService implements HubEventService {
 
     /**
      * Обрабатывает событие добавления устройства.
-     * Сохраняет информацию о новом датчике в базу данных.
      *
      * @param hub событие добавления устройства
      */
@@ -35,15 +34,13 @@ public class DeviceAddedService implements HubEventService {
     @Override
     public void handle(HubEventAvro hub) {
         DeviceAddedEventAvro deviceAddedAvro = (DeviceAddedEventAvro) hub.getPayload();
-        log.info("Сохранение нового устройства с ID = {} для хаба = {}",
-                deviceAddedAvro.getId(), hub.getHubId());
-
         sensorRepository.save(
                 Sensor.builder()
                         .id(deviceAddedAvro.getId())
                         .hubId(hub.getHubId())
                         .build()
         );
-        log.debug("Устройство с ID = {} успешно сохранено", deviceAddedAvro.getId());
+        log.info("Устройство с ID = {} сохранено для хаба = {}",
+                deviceAddedAvro.getId(), hub.getHubId());
     }
 }

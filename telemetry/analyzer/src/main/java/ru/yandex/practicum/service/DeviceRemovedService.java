@@ -26,7 +26,6 @@ public class DeviceRemovedService implements HubEventService {
 
     /**
      * Обрабатывает событие удаления устройства.
-     * Удаляет датчик из базы данных с проверкой принадлежности хабу.
      *
      * @param hub событие удаления устройства
      */
@@ -34,10 +33,8 @@ public class DeviceRemovedService implements HubEventService {
     @Override
     public void handle(HubEventAvro hub) {
         DeviceRemovedEventAvro deviceRemovedAvro = (DeviceRemovedEventAvro) hub.getPayload();
-        log.info("Удаление устройства с ID = {} для хаба = {}",
-                deviceRemovedAvro.getId(), hub.getHubId());
-
         sensorRepository.deleteByIdAndHubId(deviceRemovedAvro.getId(), hub.getHubId());
-        log.debug("Устройство с ID = {} успешно удалено", deviceRemovedAvro.getId());
+        log.info("Устройство с ID = {} удалено для хаба = {}",
+                deviceRemovedAvro.getId(), hub.getHubId());
     }
 }

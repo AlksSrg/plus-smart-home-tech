@@ -38,16 +38,15 @@ public class SnapshotService {
 
     /**
      * Обрабатывает снапшот сенсоров.
+     * Проверяет все сценарии для указанного хаба и выполняет действия,
+     * если условия сценариев выполняются.
      *
      * @param snapshot агрегированный снимок данных
      */
     @Transactional
     public void handle(SensorsSnapshotAvro snapshot) {
-
         String hubId = snapshot.getHubId();
         Map<String, SensorStateAvro> stateMap = snapshot.getSensorsState();
-
-        log.info("Обработка снапшота: hubId={}, количество сенсоров={}", hubId, stateMap.size());
 
         List<Scenario> scenarios = scenarioRepository.findByHubId(hubId);
 
@@ -56,42 +55,45 @@ public class SnapshotService {
                 sendScenarioActions(scenario);
             }
         }
+
+        log.debug("Обработан снапшот для хаба: {}, сценариев: {}", hubId, scenarios.size());
     }
 
     /**
      * Проверяет выполнение условий сценария.
+     *
+     * @param scenario сценарий для проверки
+     * @param stateMap карта состояний датчиков
+     * @return true если все условия сценария выполняются, иначе false
      */
     private boolean checkScenario(Scenario scenario, Map<String, SensorStateAvro> stateMap) {
-
         List<ScenarioCondition> conditions = scenarioConditionRepository.findByScenario(scenario);
 
         if (conditions.isEmpty()) {
-            log.debug("Сценарий '{}' не содержит условий — пропуск", scenario.getName());
             return false;
         }
 
-        boolean ok = conditions.stream()
+        return conditions.stream()
                 .allMatch(sc -> checkCondition(
                         sc.getCondition(),
                         sc.getSensor().getId(),
                         stateMap
                 ));
-
-        log.debug("Сценарий '{}': выполнение условий = {}", scenario.getName(), ok);
-
-        return ok;
     }
 
     /**
      * Проверяет выполнение одного условия.
+     *
+     * @param condition условие для проверки
+     * @param sensorId идентификатор датчика
+     * @param stateMap карта состояний датчиков
+     * @return true если условие выполняется, иначе false
      */
     private boolean checkCondition(Condition condition,
                                    String sensorId,
                                    Map<String, SensorStateAvro> stateMap) {
-
         SensorStateAvro state = stateMap.get(sensorId);
         if (state == null || state.getData() == null) {
-            log.warn("Датчик '{}' не найден в снапшоте или данные отсутствуют", sensorId);
             return false;
         }
 
@@ -108,40 +110,30 @@ public class SnapshotService {
                 case HUMIDITY -> ((ClimateSensorAvro) data).getHumidity();
             };
         } catch (ClassCastException e) {
-            log.error("Ошибка типа данных датчика '{}': {}", sensorId, e.getMessage());
+            log.error("Ошибка типа данных датчика '{}'", sensorId, e);
             return false;
         }
 
-        boolean result = switch (condition.getOperation()) {
+        return switch (condition.getOperation()) {
             case EQUALS -> currentValue.equals(condition.getValue());
             case GREATER_THAN -> currentValue > condition.getValue();
             case LOWER_THAN -> currentValue < condition.getValue();
         };
-
-        log.debug("Проверка условия для датчика '{}': текущее значение={}, требуемое={}, операция={}, результат={}",
-                sensorId, currentValue, condition.getValue(), condition.getOperation(), result);
-
-        return result;
     }
 
     /**
      * Отправляет действия сценария в HubRouter.
      *
-     * @param scenario сценарий
+     * @param scenario сценарий, действия которого нужно отправить
      */
     private void sendScenarioActions(Scenario scenario) {
-
         List<ScenarioAction> actions = scenarioActionRepository.findByScenario(scenario);
 
         if (actions.isEmpty()) {
-            log.warn("Сценарий '{}' не содержит действий", scenario.getName());
             return;
         }
 
-        log.info("Отправка действий для сценария '{}': найдено {} действий", scenario.getName(), actions.size());
-
         for (ScenarioAction actionLink : actions) {
-
             String sensorId = actionLink.getSensor().getId();
             var action = actionLink.getAction();
 
@@ -152,7 +144,6 @@ public class SnapshotService {
                 try {
                     ActionTypeProto actionType = ActionTypeProto.valueOf(action.getType().name());
                     protoBuilder.setType(actionType);
-                    log.debug("Установлен тип действия для датчика '{}': {}", sensorId, actionType);
                 } catch (IllegalArgumentException e) {
                     log.error("Неподдерживаемый тип действия '{}' для датчика '{}'", action.getType(), sensorId, e);
                     continue;
@@ -164,7 +155,6 @@ public class SnapshotService {
 
             if (action.getValue() != null) {
                 protoBuilder.setValue(action.getValue());
-                log.debug("Установлено значение действия для датчика '{}': {}", sensorId, action.getValue());
             }
 
             DeviceActionProto proto = protoBuilder.build();
@@ -184,7 +174,7 @@ public class SnapshotService {
 
             try {
                 routerClient.sendAction(request);
-                log.info("Действие отправлено для сценария '{}', датчик '{}'", scenario.getName(), sensorId);
+                log.debug("Действие отправлено для сценария '{}', датчик '{}'", scenario.getName(), sensorId);
             } catch (Exception e) {
                 log.error("Ошибка отправки действия для сценария '{}', датчик '{}'", scenario.getName(), sensorId, e);
             }
