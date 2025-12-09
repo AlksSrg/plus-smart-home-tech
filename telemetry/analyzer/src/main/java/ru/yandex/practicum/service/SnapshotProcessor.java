@@ -5,11 +5,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.handler.snapshot.SnapshotHandler;
 import ru.yandex.practicum.kafka.telemetry.event.SensorsSnapshotAvro;
 
 import java.time.Duration;
+import java.util.Collections;
 
 @Slf4j
 @Service
@@ -19,8 +21,14 @@ public class SnapshotProcessor {
     private final KafkaConsumer<String, SensorsSnapshotAvro> snapshotConsumer;
     private final SnapshotHandler snapshotHandler;
 
+    @Value("${kafka.topics.snapshot}")
+    private String snapshotTopic;
+
     public void start() {
         log.info("Запуск обработчика снапшотов");
+
+        snapshotConsumer.subscribe(Collections.singletonList(snapshotTopic));
+        log.info("Подписан на топик: {}", snapshotTopic);
 
         while (!Thread.currentThread().isInterrupted()) {
             try {
@@ -29,7 +37,7 @@ public class SnapshotProcessor {
 
                 for (ConsumerRecord<String, SensorsSnapshotAvro> record : records) {
                     SensorsSnapshotAvro snapshot = record.value();
-                    log.debug("Получен снапшот для хаба: {}", snapshot.getHubId());
+                    log.info("Получен снапшот для хаба: {}", snapshot.getHubId());
 
                     try {
                         snapshotHandler.handleSnapshot(snapshot);
