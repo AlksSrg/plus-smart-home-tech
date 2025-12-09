@@ -8,23 +8,19 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.errors.WakeupException;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 import ru.yandex.practicum.kafka.telemetry.event.SensorsSnapshotAvro;
 import ru.yandex.practicum.service.SnapshotService;
 
 import java.time.Duration;
 import java.util.List;
 
-/**
- * Процессор для обработки снапшотов состояния сенсоров из Kafka.
- * Подписывается на топик со снапшотами и обрабатывает каждое сообщение.
- */
 @Slf4j
 @RequiredArgsConstructor
 public class SnapshotProcessor {
 
     private final Consumer<String, SensorsSnapshotAvro> consumer;
     private final SnapshotService snapshotService;
+
     private volatile boolean isRunning = true;
 
     @Value("${analyzer.topic.snapshots-topic}")
@@ -38,15 +34,9 @@ public class SnapshotProcessor {
         this.topic = topic;
     }
 
-    /**
-     * Запускает обработку сообщений из топика снапшотов.
-     * Подписывается на топик и начинает опрос сообщений в цикле.
-     * Обрабатывает graceful shutdown при получении сигналов остановки.
-     */
     public void start() {
         consumer.subscribe(List.of(topic));
         log.info("Подписан на топик снапшотов: {}", topic);
-        Runtime.getRuntime().addShutdownHook(new Thread(consumer::wakeup));
 
         try {
             while (isRunning) {
@@ -59,14 +49,13 @@ public class SnapshotProcessor {
 
                 if (!records.isEmpty()) {
                     consumer.commitSync();
-                    log.debug("Зафиксированы оффсеты для {} снапшотов", records.count());
                 }
             }
-            log.info("Цикл обработки снапшотов остановлен вручную");
+            log.info("Цикл SnapshotProcessor завершён");
         } catch (WakeupException ignored) {
-            log.info("Получен WakeupException для graceful shutdown");
+            log.info("Wakeup — завершение SnapshotProcessor");
         } catch (Exception exp) {
-            log.error("Ошибка при чтении данных из топика {}", topic, exp);
+            log.error("Ошибка чтения из топика {}", topic, exp);
         } finally {
             try {
                 log.info("Закрытие консьюмера снапшотов");
@@ -77,30 +66,22 @@ public class SnapshotProcessor {
         }
     }
 
-    /**
-     * Останавливает обработку сообщений при уничтожении компонента.
-     */
     @PreDestroy
     public void shutdown() {
-        log.info("Запущен shutdown процессора снапшотов");
+        log.info("Shutdown SnapshotProcessor...");
         isRunning = false;
         consumer.wakeup();
     }
 
-    /**
-     * Обрабатывает одно сообщение со снапшотом.
-     *
-     * @param record Запись из Kafka со снапшотом
-     */
     private void handleRecord(ConsumerRecord<String, SensorsSnapshotAvro> record) {
         SensorsSnapshotAvro snapshot = record.value();
-        int sensorCount = snapshot.getSensorsState() != null ?
-                snapshot.getSensorsState().size() : 0;
+        int count = snapshot.getSensorsState() == null
+                ? 0
+                : snapshot.getSensorsState().size();
 
-        log.info("Получен снапшот для хаба: {}, сенсоров: {}, offset: {}",
-                snapshot.getHubId(), sensorCount, record.offset());
+        log.info("Снапшот: hub={}, sensors={}, offset={}",
+                snapshot.getHubId(), count, record.offset());
 
         snapshotService.handle(snapshot);
-        log.debug("Снапшот успешно обработан для хаба: {}", snapshot.getHubId());
     }
 }
