@@ -3,61 +3,48 @@ package ru.yandex.practicum.client;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.client.inject.GrpcClient;
 import org.springframework.stereotype.Service;
-import ru.yandex.practicum.model.ScenarioAction;
 import ru.yandex.practicum.grpc.telemetry.hubrouter.DeviceActionRequest;
 import ru.yandex.practicum.grpc.telemetry.hubrouter.DeviceActionResponse;
 import ru.yandex.practicum.grpc.telemetry.hubrouter.HubRouterControllerGrpc;
-import ru.yandex.practicum.grpc.telemetry.event.DeviceActionProto;
-import ru.yandex.practicum.grpc.telemetry.event.ActionTypeProto;
-import com.google.protobuf.Timestamp;
 
-import java.time.Instant;
-
+/**
+ * gRPC-клиент для отправки команд в HubRouter.
+ */
 @Slf4j
 @Service
 public class HubRouterClient {
 
+    /**
+     * gRPC-stub для вызова HubRouterController.
+     */
     @GrpcClient("hub-router")
-    private HubRouterControllerGrpc.HubRouterControllerBlockingStub hubRouter;
+    private HubRouterControllerGrpc.HubRouterControllerBlockingStub stub;
 
     /**
-     * Отправляет действие в HubRouter.
+     * Отправляет команду устройства в HubRouter.
      *
-     * @param scenarioAction действие сценария
+     * @param request запрос DeviceActionRequest
      */
-    public void sendAction(ScenarioAction scenarioAction) {
-        try {
-            DeviceActionProto.Builder actionBuilder = DeviceActionProto.newBuilder()
-                    .setSensorId(scenarioAction.getSensor().getId())
-                    .setType(ActionTypeProto.valueOf(scenarioAction.getAction().getType().name()));
+    public void sendAction(DeviceActionRequest request) {
+        log.info(
+                "Отправка команды в HubRouter: hubId={}, сценарий='{}', действие={}",
+                request.getHubId(),
+                request.getScenarioName(),
+                request.hasAction() ? request.getAction() : "<нет действия>"
+        );
 
-            if (scenarioAction.getAction().getValue() != null) {
-                actionBuilder.setValue(scenarioAction.getAction().getValue());
+        try {
+            DeviceActionResponse response = stub.handleDeviceAction(request);
+
+            if (response.getSuccess()) {
+                log.info("Команда успешно выполнена: {}", response.getMessage());
+            } else {
+                log.warn("HubRouter вернул ошибку: {}", response.getMessage());
             }
 
-            DeviceActionRequest request = DeviceActionRequest.newBuilder()
-                    .setHubId(scenarioAction.getScenario().getHubId())
-                    .setScenarioName(scenarioAction.getScenario().getName())
-                    .setAction(actionBuilder.build())
-                    .setTimestamp(timestamp())
-                    .build();
-
-            log.info("Отправка gRPC команды: {}", request);
-
-            DeviceActionResponse response = hubRouter.handleDeviceAction(request);
-            log.info("Ответ HubRouter: success={}, message={}",
-                    response.getSuccess(), response.getMessage());
-
         } catch (Exception e) {
-            log.error("Ошибка при отправке gRPC команды в HubRouter: {}", e.getMessage(), e);
+            log.error("Ошибка при вызове HubRouter: {}", e.getMessage(), e);
+            throw e;
         }
-    }
-
-    private Timestamp timestamp() {
-        Instant now = Instant.now();
-        return Timestamp.newBuilder()
-                .setSeconds(now.getEpochSecond())
-                .setNanos(now.getNano())
-                .build();
     }
 }
