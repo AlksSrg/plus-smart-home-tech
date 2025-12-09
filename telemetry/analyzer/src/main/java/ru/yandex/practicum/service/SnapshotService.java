@@ -8,7 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.client.HubRouterClient;
 import ru.yandex.practicum.grpc.telemetry.event.ActionTypeProto;
 import ru.yandex.practicum.grpc.telemetry.event.DeviceActionProto;
-import ru.yandex.practicum.grpc.telemetry.hubrouter.DeviceActionRequest;
+import ru.yandex.practicum.grpc.telemetry.event.DeviceActionRequest;
 import ru.yandex.practicum.kafka.telemetry.event.*;
 import ru.yandex.practicum.model.Condition;
 import ru.yandex.practicum.model.Scenario;
@@ -18,6 +18,7 @@ import ru.yandex.practicum.repository.ScenarioActionRepository;
 import ru.yandex.practicum.repository.ScenarioConditionRepository;
 import ru.yandex.practicum.repository.ScenarioRepository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -90,6 +91,7 @@ public class SnapshotService {
 
         SensorStateAvro state = stateMap.get(sensorId);
         if (state == null || state.getData() == null) {
+            log.warn("Датчик '{}' не найден в снапшоте или данные отсутствуют", sensorId);
             return false;
         }
 
@@ -110,11 +112,16 @@ public class SnapshotService {
             return false;
         }
 
-        return switch (condition.getOperation()) {
+        boolean result = switch (condition.getOperation()) {
             case EQUALS -> currentValue.equals(condition.getValue());
             case GREATER_THAN -> currentValue > condition.getValue();
             case LOWER_THAN -> currentValue < condition.getValue();
         };
+
+        log.debug("Проверка условия для датчика '{}': текущее значение={}, требуемое={}, операция={}, результат={}",
+                sensorId, currentValue, condition.getValue(), condition.getOperation(), result);
+
+        return result;
     }
 
     /**
@@ -126,6 +133,13 @@ public class SnapshotService {
 
         List<ScenarioAction> actions = scenarioActionRepository.findByScenario(scenario);
 
+        if (actions.isEmpty()) {
+            log.warn("Сценарий '{}' не содержит действий", scenario.getName());
+            return;
+        }
+
+        log.info("Отправка действий для сценария '{}': найдено {} действий", scenario.getName(), actions.size());
+
         for (ScenarioAction actionLink : actions) {
 
             String sensorId = actionLink.getSensor().getId();
@@ -136,29 +150,44 @@ public class SnapshotService {
 
             if (action.getType() != null) {
                 try {
-                    protoBuilder.setType(ActionTypeProto.valueOf(action.getType().name()));
+                    ActionTypeProto actionType = ActionTypeProto.valueOf(action.getType().name());
+                    protoBuilder.setType(actionType);
+                    log.debug("Установлен тип действия для датчика '{}': {}", sensorId, actionType);
                 } catch (IllegalArgumentException e) {
-                    log.warn("Неподдерживаемый тип действия '{}', используем значение по умолчанию", action.getType());
+                    log.error("Неподдерживаемый тип действия '{}' для датчика '{}'", action.getType(), sensorId, e);
+                    continue;
                 }
+            } else {
+                log.error("Тип действия не указан для датчика '{}'", sensorId);
+                continue;
             }
 
-            // Значение — если есть
             if (action.getValue() != null) {
                 protoBuilder.setValue(action.getValue());
+                log.debug("Установлено значение действия для датчика '{}': {}", sensorId, action.getValue());
             }
 
             DeviceActionProto proto = protoBuilder.build();
+
+            Instant now = Instant.now();
+            Timestamp timestamp = Timestamp.newBuilder()
+                    .setSeconds(now.getEpochSecond())
+                    .setNanos(now.getNano())
+                    .build();
 
             DeviceActionRequest request = DeviceActionRequest.newBuilder()
                     .setHubId(scenario.getHubId())
                     .setScenarioName(scenario.getName())
                     .setAction(proto)
-                    .setTimestamp(Timestamp.getDefaultInstance())
+                    .setTimestamp(timestamp)
                     .build();
 
-            routerClient.sendAction(request);
+            try {
+                routerClient.sendAction(request);
+                log.info("Действие отправлено для сценария '{}', датчик '{}'", scenario.getName(), sensorId);
+            } catch (Exception e) {
+                log.error("Ошибка отправки действия для сценария '{}', датчик '{}'", scenario.getName(), sensorId, e);
+            }
         }
-
-        log.info("Отправлено {} действий для сценария '{}'", actions.size(), scenario.getName());
     }
 }
