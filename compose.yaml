@@ -34,16 +34,15 @@ services:
                              --bootstrap-server kafka:29092'"
     init: true
 
-  db:
+  analyzer-db:
     image: postgres:16.1
+    container_name: analyzer-db
     ports:
-      - "5432:5432"
-    volumes:
-      - ./volumes/postgres:/var/lib/postgresql/data/
+      - "6432:5432"
     environment:
-      - POSTGRES_DB=smarthome
-      - POSTGRES_USER=frolv
-      - POSTGRES_PASSWORD=796822
+      - POSTGRES_DB=smart-home
+      - POSTGRES_USER=dbuser
+      - POSTGRES_PASSWORD=12345
     healthcheck:
       test: pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER
       timeout: 5s

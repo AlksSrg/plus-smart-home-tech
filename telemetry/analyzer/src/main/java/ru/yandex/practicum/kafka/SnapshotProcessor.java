@@ -20,7 +20,6 @@ import java.util.List;
  * Подписывается на топик со снапшотами и обрабатывает каждое сообщение.
  */
 @Slf4j
-@Component
 @RequiredArgsConstructor
 public class SnapshotProcessor {
 
@@ -30,6 +29,14 @@ public class SnapshotProcessor {
 
     @Value("${analyzer.topic.snapshots-topic}")
     private String topic;
+
+    public SnapshotProcessor(Consumer<String, SensorsSnapshotAvro> consumer,
+                             SnapshotService snapshotService,
+                             String topic) {
+        this.consumer = consumer;
+        this.snapshotService = snapshotService;
+        this.topic = topic;
+    }
 
     /**
      * Запускает обработку сообщений из топика снапшотов.

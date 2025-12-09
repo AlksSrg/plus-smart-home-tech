@@ -25,7 +25,6 @@ import java.util.Map;
  * Использует маппинг обработчиков для разных типов событий.
  */
 @Slf4j
-@Component
 @RequiredArgsConstructor
 public class HubEventProcessor implements Runnable {  // Добавить implements Runnable
 
@@ -36,6 +35,14 @@ public class HubEventProcessor implements Runnable {  // Добавить implem
 
     @Value("${analyzer.topic.hub-event-topic}")
     private String topic;
+
+    public HubEventProcessor(Consumer<String, HubEventAvro> consumer,
+                             HubEventServiceMap hubEventServiceMap,
+                             String topic) {
+        this.consumer = consumer;
+        this.hubEventServiceMap = hubEventServiceMap;
+        this.topic = topic;
+    }
 
     /**
      * Метод, вызываемый при запуске в отдельном потоке.
