@@ -6,12 +6,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.client.HubRouterClient;
 import ru.yandex.practicum.kafka.telemetry.event.*;
-import ru.yandex.practicum.model.Scenario;
 import ru.yandex.practicum.model.Condition;
+import ru.yandex.practicum.model.Scenario;
 import ru.yandex.practicum.model.ScenarioAction;
 import ru.yandex.practicum.model.ScenarioCondition;
-import ru.yandex.practicum.repository.ScenarioConditionRepository;
 import ru.yandex.practicum.repository.ScenarioActionRepository;
+import ru.yandex.practicum.repository.ScenarioConditionRepository;
 import ru.yandex.practicum.repository.ScenarioRepository;
 
 import java.util.List;
@@ -33,107 +33,131 @@ public class SnapshotService {
     private final HubRouterClient routerClient;
 
     /**
-     * Обрабатывает снапшот состояния сенсоров.
-     * Проверяет все сценарии для хаба и отправляет действия для выполненных сценариев.
+     * Основной метод обработки снапшота.
      *
-     * @param sensorsSnapshotAvro снапшот состояния сенсоров
+     * @param snapshot снапшот состояния датчиков
      */
-    @Transactional(readOnly = true)
-    public void handle(SensorsSnapshotAvro sensorsSnapshotAvro) {
-        Map<String, SensorStateAvro> sensorStateMap = sensorsSnapshotAvro.getSensorsState();
-        String hubId = sensorsSnapshotAvro.getHubId();
+    @Transactional
+    public void handle(SensorsSnapshotAvro snapshot) {
 
-        log.info("Обработка снапшота для хаба: {}, сенсоров: {}",
-                hubId, sensorStateMap.size());
+        String hubId = snapshot.getHubId();
+        Map<String, SensorStateAvro> stateMap = snapshot.getSensorsState();
 
-        List<Scenario> scenariosList = scenarioRepository.findByHubId(hubId);
-        log.debug("Найдено сценариев для хаба {}: {}", hubId, scenariosList.size());
+        log.info("Обработка снапшота: hubId={}, sensors={}", hubId, stateMap.size());
 
-        scenariosList.stream()
-                .filter(scenario -> handleScenario(scenario, sensorStateMap))
-                .forEach(scenario -> {
-                    log.info("Отправка действий для сценария: {}", scenario.getName());
-                    sendScenarioAction(scenario);
-                });
-    }
+        List<Scenario> scenarios = scenarioRepository.findByHubId(hubId);
 
-    private void sendScenarioAction(Scenario scenario) {
-        List<ScenarioAction> scenarioActions = scenarioActionRepository.findByScenario(scenario);
-        log.debug("Найдено действий для сценария {}: {}", scenario.getName(), scenarioActions.size());
-
-        scenarioActions.forEach(action -> {
-            try {
-                routerClient.sendAction(action);
-                log.debug("Действие успешно отправлено для сценария: {}", scenario.getName());
-            } catch (Exception e) {
-                log.error("Ошибка при отправке действия для сценария: {}", scenario.getName(), e);
+        for (Scenario scenario : scenarios) {
+            if (checkScenario(scenario, stateMap)) {
+                sendScenarioActions(scenario);
             }
-        });
+        }
     }
 
-    private boolean handleScenario(Scenario scenario, Map<String, SensorStateAvro> sensorStateMap) {
-        List<ScenarioCondition> scenarioConditions = scenarioConditionRepository.findByScenario(scenario);
-        log.debug("Проверка сценария: {}, условий: {}",
-                scenario.getName(), scenarioConditions.size());
+    /**
+     * Проверяет выполнение всех условий сценария.
+     *
+     * @param scenario сценарий
+     * @param stateMap карта состояний датчиков
+     * @return true если все условия выполнены
+     */
+    private boolean checkScenario(Scenario scenario, Map<String, SensorStateAvro> stateMap) {
 
-        if (scenarioConditions.isEmpty()) {
-            log.debug("Сценарий {} не имеет условий, пропускаем", scenario.getName());
+        List<ScenarioCondition> conditions =
+                scenarioConditionRepository.findByScenario(scenario);
+
+        if (conditions.isEmpty()) {
+            log.debug("Сценарий {} не имеет условий — пропуск", scenario.getName());
             return false;
         }
 
-        boolean allConditionsMet = scenarioConditions.stream()
-                .allMatch(sc -> checkCondition(sc.getCondition(), sc.getSensor().getId(), sensorStateMap));
+        boolean result = conditions.stream()
+                .allMatch(sc -> checkCondition(sc.getCondition(),
+                        sc.getSensor().getId(),
+                        stateMap));
 
-        log.debug("Сценарий {}: все условия выполнены = {}", scenario.getName(), allConditionsMet);
-        return allConditionsMet;
+        log.debug("Сценарий {}: условия выполнены = {}", scenario.getName(), result);
+
+        return result;
     }
 
-    private boolean handleOperation(Condition condition, Integer currentValue) {
-        Integer targetValue = condition.getValue();
-        return switch (condition.getOperation()) {
-            case EQUALS -> targetValue.equals(currentValue);
-            case GREATER_THAN -> currentValue > targetValue;
-            case LOWER_THAN -> currentValue < targetValue;
-        };
-    }
+    /**
+     * Проверяет одно условие сценария.
+     *
+     * @param condition условие
+     * @param sensorId  ID датчика
+     * @param stateMap  карта состояний датчиков
+     * @return true если условие выполняется
+     */
+    private boolean checkCondition(Condition condition,
+                                   String sensorId,
+                                   Map<String, SensorStateAvro> stateMap) {
 
-    private boolean checkCondition(Condition condition, String sensorId, Map<String, SensorStateAvro> sensorStateMap) {
-        SensorStateAvro sensorState = sensorStateMap.get(sensorId);
-        if (sensorState == null) {
-            log.debug("Датчик {} не найден в снапшоте", sensorId);
+        SensorStateAvro state = stateMap.get(sensorId);
+        if (state == null) {
             return false;
         }
+
+        Object data = state.getData();
+        if (data == null) {
+            return false;
+        }
+
+        Integer currentValue;
 
         try {
-            return switch (condition.getType()) {
+            currentValue = switch (condition.getType()) {
                 case MOTION -> {
-                    MotionSensorAvro motion = (MotionSensorAvro) sensorState.getData();
-                    yield handleOperation(condition, motion.getMotion() ? 1 : 0);
+                    MotionSensorAvro sensor = (MotionSensorAvro) data;
+                    yield sensor.getMotion() ? 1 : 0;
                 }
                 case LUMINOSITY -> {
-                    LightSensorAvro light = (LightSensorAvro) sensorState.getData();
-                    yield handleOperation(condition, light.getLuminosity());
+                    LightSensorAvro sensor = (LightSensorAvro) data;
+                    yield sensor.getLuminosity();
                 }
                 case SWITCH -> {
-                    SwitchSensorAvro sw = (SwitchSensorAvro) sensorState.getData();
-                    yield handleOperation(condition, sw.getState() ? 1 : 0);
+                    SwitchSensorAvro sensor = (SwitchSensorAvro) data;
+                    yield sensor.getState() ? 1 : 0;
                 }
                 case TEMPERATURE -> {
-                    ClimateSensorAvro climate = (ClimateSensorAvro) sensorState.getData();
-                    yield handleOperation(condition, climate.getTemperatureC());
+                    ClimateSensorAvro sensor = (ClimateSensorAvro) data;
+                    yield sensor.getTemperatureC();
                 }
                 case CO2LEVEL -> {
-                    ClimateSensorAvro climate = (ClimateSensorAvro) sensorState.getData();
-                    yield handleOperation(condition, climate.getCo2Level());
+                    ClimateSensorAvro sensor = (ClimateSensorAvro) data;
+                    yield sensor.getCo2Level();
                 }
                 case HUMIDITY -> {
-                    ClimateSensorAvro climate = (ClimateSensorAvro) sensorState.getData();
-                    yield handleOperation(condition, climate.getHumidity());
+                    ClimateSensorAvro sensor = (ClimateSensorAvro) data;
+                    yield sensor.getHumidity();
                 }
             };
         } catch (ClassCastException e) {
-            log.error("Некорректный тип данных для датчика {}: {}", sensorId, e.getMessage());
+            log.error("Несоответствие типа датчика {}: {}", sensorId, e.getMessage());
             return false;
         }
+
+        return switch (condition.getOperation()) {
+            case EQUALS -> currentValue.equals(condition.getValue());
+            case GREATER_THAN -> currentValue > condition.getValue();
+            case LOWER_THAN -> currentValue < condition.getValue();
+        };
+    }
+
+    /**
+     * Отправляет все действия сценария в HubRouter.
+     *
+     * @param scenario сценарий
+     */
+    private void sendScenarioActions(Scenario scenario) {
+
+        List<ScenarioAction> actions =
+                scenarioActionRepository.findByScenario(scenario);
+
+        for (ScenarioAction action : actions) {
+            routerClient.sendAction(action);
+        }
+
+        log.info("Отправлено {} действий для сценария {}", actions.size(), scenario.getName());
     }
 }

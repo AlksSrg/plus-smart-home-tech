@@ -26,6 +26,9 @@ public class ScenarioAddedService implements HubEventService {
     private final ScenarioActionRepository scenarioActionRepository;
     private final ScenarioConditionRepository scenarioConditionRepository;
 
+    /**
+     * @return имя payload-класса, который обслуживает данный сервис
+     */
     @Override
     public String getPayloadType() {
         return ScenarioAddedEventAvro.class.getSimpleName();
@@ -33,22 +36,20 @@ public class ScenarioAddedService implements HubEventService {
 
     /**
      * Обрабатывает событие добавления сценария.
-     * Сохраняет сценарий, его условия и действия в базу данных.
-     * Если сценарий с таким именем уже существует - обновляет его.
      *
-     * @param hub событие добавления сценария
+     * @param hub событие хаба, содержащее ScenarioAddedEventAvro
      */
     @Transactional
     @Override
     public void handle(HubEventAvro hub) {
-        ScenarioAddedEventAvro avro = (ScenarioAddedEventAvro) hub.getPayload();
-        log.info("Добавление сценария с именем = {} для хаба = {}",
-                avro.getName(), hub.getHubId());
 
-        // Создаем или находим существующий сценарий
-        Scenario scenario = scenarioRepository.findByHubIdAndName(hub.getHubId(), avro.getName())
+        ScenarioAddedEventAvro avro = (ScenarioAddedEventAvro) hub.getPayload();
+        log.info("Добавление сценария '{}' для хаба {}", avro.getName(), hub.getHubId());
+
+        Scenario scenario = scenarioRepository
+                .findByHubIdAndName(hub.getHubId(), avro.getName())
                 .orElseGet(() -> {
-                    log.debug("Создание нового сценария: {}", avro.getName());
+                    log.debug("Создаётся новый сценарий: {}", avro.getName());
                     return scenarioRepository.save(
                             Scenario.builder()
                                     .hubId(hub.getHubId())
@@ -57,44 +58,62 @@ public class ScenarioAddedService implements HubEventService {
                     );
                 });
 
-        log.debug("Очистка существующих условий и действий для сценария: {}", scenario.getId());
-        scenarioActionRepository.deleteByScenario(scenario);
-        scenarioConditionRepository.deleteByScenario(scenario);
+        // Обновляем имя, если оно изменилось
+        if (!scenario.getName().equals(avro.getName())) {
+            scenario.setName(avro.getName());
+            scenarioRepository.save(scenario);
+        }
 
-        // Сохраняем условия сценария
-        log.debug("Сохранение условий сценария: {}", avro.getConditions().size());
-        avro.getConditions().forEach(conditionAvro -> {
-            Sensor sensor = getOrCreateSensor(conditionAvro.getSensorId(), hub.getHubId());
-            Condition condition = saveCondition(conditionAvro);
+        // Удаляем старые условия и действия
+        scenarioConditionRepository.deleteByScenario(scenario);
+        scenarioActionRepository.deleteByScenario(scenario);
+
+        // Сохранение условий
+        avro.getConditions().forEach(condAvro -> {
+            Sensor sensor = getOrCreateSensor(condAvro.getSensorId(), hub.getHubId());
+            Condition condition = saveCondition(condAvro);
             saveScenarioCondition(scenario, sensor, condition);
         });
 
-        // Сохраняем действия сценария
-        log.debug("Сохранение действий сценария: {}", avro.getActions().size());
+        // Сохранение действий
         avro.getActions().forEach(actionAvro -> {
             Sensor sensor = getOrCreateSensor(actionAvro.getSensorId(), hub.getHubId());
             Action action = saveAction(actionAvro);
             saveScenarioAction(scenario, sensor, action);
         });
 
-        log.info("Сценарий {} успешно сохранен с {} условиями и {} действиями",
+        log.info("Сценарий '{}' сохранён. Условий: {}. Действий: {}.",
                 avro.getName(), avro.getConditions().size(), avro.getActions().size());
     }
 
+    /**
+     * Получает или создаёт новый датчик.
+     *
+     * @param sensorId ID датчика
+     * @param hubId    ID хаба
+     * @return существующий или новый Sensor
+     */
     private Sensor getOrCreateSensor(String sensorId, String hubId) {
         return sensorRepository.findById(sensorId)
-                .orElseGet(() -> {
-                    log.debug("Создание нового датчика: {}", sensorId);
-                    return sensorRepository.save(
-                            Sensor.builder()
-                                    .id(sensorId)
-                                    .hubId(hubId)
-                                    .build()
-                    );
-                });
+                .orElseGet(() ->
+                        sensorRepository.save(
+                                Sensor.builder()
+                                        .id(sensorId)
+                                        .hubId(hubId)
+                                        .build()
+                        )
+                );
     }
 
-    private Condition saveCondition(ru.yandex.practicum.kafka.telemetry.event.ScenarioConditionAvro conditionAvro) {
+    /**
+     * Создаёт и сохраняет Condition из AVRO-объекта.
+     *
+     * @param conditionAvro условие из события
+     * @return сохранённая сущность Condition
+     */
+    private Condition saveCondition(
+            ru.yandex.practicum.kafka.telemetry.event.ScenarioConditionAvro conditionAvro) {
+
         return conditionRepository.save(
                 Condition.builder()
                         .type(conditionAvro.getType())
@@ -104,6 +123,12 @@ public class ScenarioAddedService implements HubEventService {
         );
     }
 
+    /**
+     * Создаёт и сохраняет Action из AVRO-объекта.
+     *
+     * @param actionAvro действие из события
+     * @return сохранённая сущность Action
+     */
     private Action saveAction(DeviceActionAvro actionAvro) {
         return actionRepository.save(
                 Action.builder()
@@ -113,7 +138,16 @@ public class ScenarioAddedService implements HubEventService {
         );
     }
 
-    private void saveScenarioCondition(Scenario scenario, Sensor sensor, Condition condition) {
+    /**
+     * Сохраняет связь сценарий—датчик—условие.
+     *
+     * @param scenario  сценарий
+     * @param sensor    датчик
+     * @param condition условие
+     */
+    private void saveScenarioCondition(Scenario scenario,
+                                       Sensor sensor,
+                                       Condition condition) {
         scenarioConditionRepository.save(
                 ScenarioCondition.builder()
                         .scenario(scenario)
@@ -127,7 +161,17 @@ public class ScenarioAddedService implements HubEventService {
         );
     }
 
-    private void saveScenarioAction(Scenario scenario, Sensor sensor, Action action) {
+    /**
+     * Сохраняет связь сценарий—датчик—действие.
+     *
+     * @param scenario сценарий
+     * @param sensor   датчик
+     * @param action   действие
+     */
+    private void saveScenarioAction(Scenario scenario,
+                                    Sensor sensor,
+                                    Action action) {
+
         scenarioActionRepository.save(
                 ScenarioAction.builder()
                         .scenario(scenario)
@@ -141,14 +185,16 @@ public class ScenarioAddedService implements HubEventService {
         );
     }
 
+    /**
+     * Приводит значение условия (Boolean/Integer) к Integer.
+     *
+     * @param value исходное значение из AVRO
+     * @return число (0/1 или integer)
+     */
     private Integer asInteger(Object value) {
-        if (value instanceof Integer) {
-            return (Integer) value;
-        } else if (value instanceof Boolean) {
-            return (Boolean) value ? 1 : 0;
-        } else {
-            log.warn("Неизвестный тип значения условия: {}", value.getClass());
-            return 0;
-        }
+        if (value instanceof Boolean b) return b ? 1 : 0;
+        if (value instanceof Integer i) return i;
+        log.warn("Неизвестный тип значения условия: {}", value);
+        return 0;
     }
 }
