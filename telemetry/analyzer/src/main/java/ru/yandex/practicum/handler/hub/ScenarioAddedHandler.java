@@ -41,7 +41,7 @@ public class ScenarioAddedHandler implements HubEventHandler {
         Set<String> allSensorIds = collectAllSensorIds(scenarioAddedEventAvro);
 
         // Проверяем существование всех датчиков
-        if (!sensorRepository.existsByIdInAndHubId(allSensorIds, hubId)) {
+        if (!sensorRepository.existsByIdInAndHubId(allSensorIds, hubId, allSensorIds.size())) {
             log.error("Не найдены некоторые датчики для хаба: {}", hubId);
             return;
         }
