@@ -34,8 +34,8 @@ public class GrpcToDomainTransformer {
         );
 
         switch (sensorEventProto.getPayloadCase()) {
-            case TEMPERATURE_SENSOR:
-                TemperatureSensorProto tempProto = sensorEventProto.getTemperatureSensor();
+            case TEMPERATURE_SENSOR_EVENT:
+                TemperatureSensorProto tempProto = sensorEventProto.getTemperatureSensorEvent();
                 TemperatureSensorEvent tempEvent = new TemperatureSensorEvent();
                 tempEvent.setId(sensorId);
                 tempEvent.setHubId(hubId);
@@ -44,8 +44,8 @@ public class GrpcToDomainTransformer {
                 tempEvent.setTemperatureF(tempProto.getTemperatureF());
                 return tempEvent;
 
-            case LIGHT_SENSOR:
-                LightSensorProto lightProto = sensorEventProto.getLightSensor();
+            case LIGHT_SENSOR_EVENT:
+                LightSensorProto lightProto = sensorEventProto.getLightSensorEvent();
                 LightSensorEvent lightEvent = new LightSensorEvent();
                 lightEvent.setId(sensorId);
                 lightEvent.setHubId(hubId);
@@ -54,8 +54,8 @@ public class GrpcToDomainTransformer {
                 lightEvent.setLuminosity(lightProto.getLuminosity());
                 return lightEvent;
 
-            case MOTION_SENSOR:
-                MotionSensorProto motionProto = sensorEventProto.getMotionSensor();
+            case MOTION_SENSOR_EVENT:
+                MotionSensorProto motionProto = sensorEventProto.getMotionSensorEvent();
                 MotionSensorEvent motionEvent = new MotionSensorEvent();
                 motionEvent.setId(sensorId);
                 motionEvent.setHubId(hubId);
@@ -65,8 +65,8 @@ public class GrpcToDomainTransformer {
                 motionEvent.setVoltage(motionProto.getVoltage());
                 return motionEvent;
 
-            case CLIMATE_SENSOR:
-                ClimateSensorProto climateProto = sensorEventProto.getClimateSensor();
+            case CLIMATE_SENSOR_EVENT:
+                ClimateSensorProto climateProto = sensorEventProto.getClimateSensorEvent();
                 ClimateSensorEvent climateEvent = new ClimateSensorEvent();
                 climateEvent.setId(sensorId);
                 climateEvent.setHubId(hubId);
@@ -76,8 +76,8 @@ public class GrpcToDomainTransformer {
                 climateEvent.setCo2Level(climateProto.getCo2Level());
                 return climateEvent;
 
-            case SWITCH_SENSOR:
-                SwitchSensorProto switchProto = sensorEventProto.getSwitchSensor();
+            case SWITCH_SENSOR_EVENT:
+                SwitchSensorProto switchProto = sensorEventProto.getSwitchSensorEvent();
                 SwitchSensorEvent switchEvent = new SwitchSensorEvent();
                 switchEvent.setId(sensorId);
                 switchEvent.setHubId(hubId);
@@ -87,6 +87,7 @@ public class GrpcToDomainTransformer {
 
             case PAYLOAD_NOT_SET:
             default:
+                log.error("Неизвестный тип датчика: {}", sensorEventProto.getPayloadCase());
                 throw new IllegalArgumentException("Неизвестный тип датчика: " + sensorEventProto.getPayloadCase());
         }
     }
@@ -142,6 +143,7 @@ public class GrpcToDomainTransformer {
 
             case PAYLOAD_NOT_SET:
             default:
+                log.error("Неизвестный тип события хаба: {}", hubEventProto.getPayloadCase());
                 throw new IllegalArgumentException("Неизвестный тип события хаба: " + hubEventProto.getPayloadCase());
         }
     }
@@ -156,7 +158,10 @@ public class GrpcToDomainTransformer {
             case LIGHT_SENSOR -> DeviceType.LIGHT_SENSOR;
             case CLIMATE_SENSOR -> DeviceType.CLIMATE_SENSOR;
             case SWITCH_SENSOR -> DeviceType.SWITCH_SENSOR;
-            default -> throw new IllegalArgumentException("Неизвестный тип устройства: " + protoType);
+            default -> {
+                log.error("Неизвестный тип устройства: {}", protoType);
+                throw new IllegalArgumentException("Неизвестный тип устройства: " + protoType);
+            }
         };
     }
 
@@ -171,20 +176,19 @@ public class GrpcToDomainTransformer {
                     condition.setType(ConditionType.valueOf(proto.getType().name()));
                     condition.setOperation(ConditionOperation.valueOf(proto.getOperation().name()));
 
-                    // Обрабатываем значение в зависимости от типа
                     switch (proto.getValueCase()) {
                         case BOOL_VALUE:
-                            // Boolean -> Integer (true = 1, false = 0)
                             condition.setValue(proto.getBoolValue() ? 1 : 0);
+                            log.debug("Преобразованное булево значение условия: {} -> {}", proto.getBoolValue(), condition.getValue());
                             break;
                         case INT_VALUE:
                             condition.setValue(proto.getIntValue());
+                            log.debug("Целочисленное значение условия: {}", proto.getIntValue());
                             break;
                         case VALUE_NOT_SET:
                         default:
-                            // Валидация требует @NotNull, но в Protobuf может быть не установлено
-                            // В реальном коде нужно решить, как обрабатывать эту ситуацию
-                            condition.setValue(0); // или null, но тогда будет нарушена валидация
+                            log.warn("Значение условия не установлено, устанавливаем 0 по умолчанию");
+                            condition.setValue(0);
                             break;
                     }
 
@@ -203,15 +207,13 @@ public class GrpcToDomainTransformer {
                     action.setSensorId(proto.getSensorId());
                     action.setType(ActionType.valueOf(proto.getType().name()));
 
-                    // Для optional поля проверяем hasValue()
                     if (proto.hasValue()) {
                         action.setValue(proto.getValue());
+                        log.debug("Значение действия установлено: {}", proto.getValue());
                     } else {
-                        // Валидация не требует @NotNull для DeviceAction.value
-                        // Можно оставить null
                         action.setValue(null);
+                        log.debug("Значение действия не установлено, оставляем null");
                     }
-
                     return action;
                 })
                 .collect(Collectors.toList());
