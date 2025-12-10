@@ -2,7 +2,6 @@ package ru.yandex.practicum.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import lombok.experimental.FieldDefaults;
 import ru.yandex.practicum.kafka.telemetry.event.ConditionOperationAvro;
 import ru.yandex.practicum.kafka.telemetry.event.ConditionTypeAvro;
 
@@ -19,22 +18,21 @@ import ru.yandex.practicum.kafka.telemetry.event.ConditionTypeAvro;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@FieldDefaults(level = AccessLevel.PRIVATE)
 public class Condition {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
-    Long id;
+    private Long id;
 
     @Column(name = "type")
     @Enumerated(EnumType.STRING)
-    ConditionTypeAvro type;
+    private ConditionTypeAvro type;
 
     @Column(name = "operation")
     @Enumerated(EnumType.STRING)
-    ConditionOperationAvro operation;
+    private ConditionOperationAvro operation;
 
     @Column(name = "value")
-    Integer value;
+    private Integer value;
 }

@@ -2,7 +2,6 @@ package ru.yandex.practicum.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import lombok.experimental.FieldDefaults;
 import ru.yandex.practicum.kafka.telemetry.event.ActionTypeAvro;
 
 /**
@@ -18,7 +17,6 @@ import ru.yandex.practicum.kafka.telemetry.event.ActionTypeAvro;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@FieldDefaults(level = AccessLevel.PRIVATE)
 public class Action {
 
     @Id
@@ -28,8 +26,8 @@ public class Action {
 
     @Column(name = "type")
     @Enumerated(EnumType.STRING)
-    ActionTypeAvro type;
+    private ActionTypeAvro type;
 
     @Column(name = "value")
-    Integer value;
+    private Integer value;
 }
