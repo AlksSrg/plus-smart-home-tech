@@ -1,0 +1,34 @@
+spring:
+  application:
+    name: collector
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: ru.yandex.practicum.kafka.serializer.GeneralAvroSerializer
+      acks: all
+      retries: 3
+
+# Server configuration
+server:
+  port: 59091
+
+# gRPC Server configuration
+grpc:
+  server:
+    port: 59091
+    address: 0.0.0.0
+
+# Kafka topics
+kafka:
+  topics:
+    hub-events: telemetry.hubs.v1
+    sensor-events: telemetry.sensors.v1
+
+# Logging
+logging:
+  level:
+    root: INFO
+    org.springframework.kafka: INFO
+    ru.yandex.practicum: TRACE
+    net.devh: WARN

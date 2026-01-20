@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: collector
+  config:
+    import: "configserver:"
+  cloud:
+    config:
+      fail-fast: true
+      retry:
+        useRandomPolicy: true
+        max-interval: 6000
+      # Discovery для Config Server
+      discovery:
+        enabled: true
+        service-id: config-server
+
+server:
+  port: 0  # Spring автоматически выберет свободный порт
+
+# Eureka-client
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://${eureka.instance.hostname:localhost}:${eureka.instance.port:8761}/eureka/
+  instance:
+    # Используем автоматическое определение IP
+    prefer-ip-address: true
+    # Метаданные для инстанса
+    metadata-map:
+      gRPC-port: 59091

@@ -1,0 +1,15 @@
+# Hibernate
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+  # Postgres
+  datasource:
+    driverClassName: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:6434/warehouse-db
+    username: dbuser
+    password: '12345'
+
+server:
+  port: 0

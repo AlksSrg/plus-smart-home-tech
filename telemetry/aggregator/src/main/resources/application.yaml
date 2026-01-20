@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: aggregator
+  config:
+    import: "configserver:"
+  cloud:
+    config:
+      discovery:
+        enabled: true
+        service-id: config-server
+      fail-fast: true
+      retry:
+        useRandomPolicy: true
+        max-interval: 6000
+
+server:
+  port: 0
+
+# Eureka Client Configuration
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+    metadata-map:
+      service-type: "telemetry-aggregation"
+      version: "1.0.0"
+      database: "postgresql"

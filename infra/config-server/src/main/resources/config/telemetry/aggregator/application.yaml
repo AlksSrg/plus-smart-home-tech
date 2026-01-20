@@ -1,0 +1,58 @@
+# Spring
+spring:
+  application:
+    name: aggregator
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: false
+  sql:
+    init:
+      mode: always
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/smarthome}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+
+# Server
+server:
+  port: 8080
+
+# Kafka
+kafka:
+  bootstrap-servers: localhost:9092
+  group-id:
+    snapshot: analyzer.snapshots
+    hub: analyzer.hubs
+  topics:
+    snapshot: telemetry.snapshots.v1
+    hub: telemetry.hubs.v1
+  consumer:
+    enable-auto-commit: false
+
+# gRPC
+grpc:
+  client:
+    hub-router:
+      address: static://localhost:59090
+      enable-keep-alive: true
+      keep-alive-without-calls: true
+      negotiation-type: plaintext
+
+# Stats Client (только для aggregator)
+stats:
+  client:
+    url: ${STATS_SERVER:http://localhost:9090}
+
+# Logging
+logging:
+  level:
+    ru.yandex.practicum: INFO
+    org.apache.kafka: WARN
+    org.springframework.kafka: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

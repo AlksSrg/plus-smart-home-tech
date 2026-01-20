@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: hub-router
+  config:
+    import: "configserver:"  # Получение конфигурации из Config Server через Eureka
+  cloud:
+    config:
+      discovery:
+        enabled: true
+        service-id: config-server
+      fail-fast: true
+
+server:
+  port: 0  # Динамический порт для HTTP (Eureka будет использовать этот для health checks)
+
+# gRPC Server Configuration
+grpc:
+  server:
+    port: 59090  # Фиксированный порт для gRPC
+    address: 0.0.0.0
+
+# Eureka Client Configuration
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+    metadata-map:
+      grpc-port: "59090"
+      service-type: "device-router"
+      protocol: "grpc"
+      version: "1.0.0"
+      device-support: "hubs,controllers"
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    ru.yandex.practicum: INFO
+    org.springframework: INFO
+    net.devh: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
