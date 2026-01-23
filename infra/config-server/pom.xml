@@ -44,7 +44,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <mainClass>ru.yandex.practicum.server.ConfigServer</mainClass>
+                    <mainClass>ru.yandex.practicum.config.ConfigServer</mainClass>
                 </configuration>
                 <executions>
                     <execution>
