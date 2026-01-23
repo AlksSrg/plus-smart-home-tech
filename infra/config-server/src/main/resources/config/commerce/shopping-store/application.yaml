@@ -1,38 +1,15 @@
+# Hibernate
 spring:
-  application:
-    name: shopping-store
-
-  cloud:
-    discovery:
-      enabled: true
-    loadbalancer:
-      ribbon:
-        enabled: false
-
   jpa:
     hibernate:
       ddl-auto: update
 
+  # Postgres
   datasource:
     driverClassName: org.postgresql.Driver
     url: jdbc:postgresql://localhost:6433/store-db
     username: dbuser
     password: '12345'
-
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
-    fetch-registry: true
-    register-with-eureka: true
-    enabled: true
-  instance:
-    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
-    prefer-ip-address: true
-    lease-renewal-interval-in-seconds: 10
-    lease-expiration-duration-in-seconds: 30
-    non-secure-port: 0
-    non-secure-port-enabled: true
 
 server:
   port: 0
