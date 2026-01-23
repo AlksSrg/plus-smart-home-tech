@@ -4,12 +4,18 @@ spring:
     hibernate:
       ddl-auto: update
 
-  # Postgres
+  # Postgres (Docker)
   datasource:
     driverClassName: org.postgresql.Driver
-    url: jdbc:postgresql://localhost:6434/warehouse-db
+    url: jdbc:postgresql://commerce-warehouse-db:5432/warehouse-db
     username: dbuser
     password: '12345'
 
 server:
   port: 0
+
+# Eureka-client
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://discovery-server:8761/eureka/
