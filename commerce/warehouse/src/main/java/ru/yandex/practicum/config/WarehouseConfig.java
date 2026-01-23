@@ -6,17 +6,27 @@ import org.springframework.context.annotation.Configuration;
 
 import java.security.SecureRandom;
 
+/**
+ * Конфигурация склада.
+ * Содержит настройки для инициализации адреса склада.
+ */
 @Configuration
 @Slf4j
 public class WarehouseConfig {
 
     private static final String[] ADDRESSES = {"ADDRESS_1", "ADDRESS_2"};
 
+    /**
+     * Создает бин с адресом склада.
+     * Адрес выбирается случайным образом из предопределенного списка.
+     *
+     * @return строку с адресом склада
+     */
     @Bean
     public String warehouseAddress() {
         SecureRandom secureRandom = new SecureRandom();
         String address = ADDRESSES[secureRandom.nextInt(ADDRESSES.length)];
-        log.info("Warehouse initialized with address: {}", address);
+        log.info("Склад инициализирован с адресом: {}", address);
         return address;
     }
 }

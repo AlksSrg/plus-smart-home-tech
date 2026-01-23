@@ -4,7 +4,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.yandex.practicum.dto.warehouse.*;
+import ru.yandex.practicum.dto.warehouse.AddProductToWarehouseRequest;
+import ru.yandex.practicum.dto.warehouse.AddressDto;
+import ru.yandex.practicum.dto.warehouse.BookedProductsDto;
+import ru.yandex.practicum.dto.warehouse.NewProductInWarehouseRequest;
 import ru.yandex.practicum.exception.NoSpecifiedProductInWarehouseException;
 import ru.yandex.practicum.exception.ProductInShoppingCartLowQuantityInWarehouseException;
 import ru.yandex.practicum.exception.SpecifiedProductAlreadyInWarehouseException;
@@ -12,8 +15,15 @@ import ru.yandex.practicum.model.WarehouseItem;
 import ru.yandex.practicum.repository.WarehouseItemRepository;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
+/**
+ * Сервис для управления операциями на складе.
+ * Обеспечивает бизнес-логику работы со складскими товарами.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -22,9 +32,15 @@ public class WarehouseService {
     private final WarehouseItemRepository repository;
     private final String warehouseAddress;
 
+    /**
+     * Добавляет новый товар на склад.
+     *
+     * @param request запрос с данными нового товара
+     * @throws SpecifiedProductAlreadyInWarehouseException если товар уже существует на складе
+     */
     @Transactional
     public void addNewProduct(NewProductInWarehouseRequest request) {
-        log.info("Adding new product to warehouse: {}", request.getProductId());
+        log.info("Добавление нового товара на склад: {}", request.getProductId());
 
         if (repository.existsByProductId(request.getProductId())) {
             throw new SpecifiedProductAlreadyInWarehouseException(
@@ -34,7 +50,7 @@ public class WarehouseService {
 
         WarehouseItem item = WarehouseItem.builder()
                 .productId(request.getProductId())
-                .quantity(0) // Изначально товара нет на складе
+                .quantity(0)
                 .width(request.getDimension().getWidth())
                 .height(request.getDimension().getHeight())
                 .depth(request.getDimension().getDepth())
@@ -44,12 +60,19 @@ public class WarehouseService {
                 .build();
 
         repository.save(item);
-        log.info("Product {} added to warehouse", request.getProductId());
+        log.info("Товар {} добавлен на склад", request.getProductId());
     }
 
+    /**
+     * Проверяет доступность товаров на складе для корзины покупок.
+     *
+     * @param shoppingCartDto данные корзины покупок
+     * @return DTO с информацией о доступных товарах для доставки
+     * @throws ProductInShoppingCartLowQuantityInWarehouseException если товаров недостаточно на складе
+     */
     @Transactional
     public BookedProductsDto checkProductQuantity(ru.yandex.practicum.dto.cart.ShoppingCartDto shoppingCartDto) {
-        log.info("Checking product availability for cart: {}", shoppingCartDto.getCartId());
+        log.info("Проверка доступности товаров для корзины: {}", shoppingCartDto.getCartId());
 
         Map<UUID, Integer> unavailableProducts = new HashMap<>();
         Double totalWeight = 0.0;
@@ -63,7 +86,7 @@ public class WarehouseService {
             Optional<WarehouseItem> itemOpt = repository.findByProductId(productId);
 
             if (itemOpt.isEmpty()) {
-                unavailableProducts.put(productId, 0); // Товар вообще не найден на складе
+                unavailableProducts.put(productId, 0);
                 continue;
             }
 
@@ -98,9 +121,15 @@ public class WarehouseService {
                 .build();
     }
 
+    /**
+     * Добавляет дополнительное количество существующего товара на склад.
+     *
+     * @param request запрос с данными о добавляемом количестве товара
+     * @throws NoSpecifiedProductInWarehouseException если товар не найден на складе
+     */
     @Transactional
     public void addProductQuantity(AddProductToWarehouseRequest request) {
-        log.info("Adding quantity for product: {}, quantity: {}",
+        log.info("Добавление количества товара: {}, количество: {}",
                 request.getProductId(), request.getQuantity());
 
         WarehouseItem item = repository.findByProductId(request.getProductId())
@@ -112,14 +141,19 @@ public class WarehouseService {
         item.setUpdatedAt(LocalDateTime.now());
 
         repository.save(item);
-        log.info("Quantity updated for product: {}, new quantity: {}",
+        log.info("Количество обновлено для товара: {}, новое количество: {}",
                 request.getProductId(), item.getQuantity());
     }
 
+    /**
+     * Возвращает адрес склада.
+     *
+     * @return DTO с адресом склада
+     */
     public AddressDto getWarehouseAddress() {
-        log.info("Getting warehouse address: {}", warehouseAddress);
+        log.info("Получение адреса склада: {}", warehouseAddress);
 
-        // Дублируем адрес во все поля согласно ТЗ
+
         return AddressDto.builder()
                 .country(warehouseAddress)
                 .city(warehouseAddress)
@@ -129,6 +163,13 @@ public class WarehouseService {
                 .build();
     }
 
+    /**
+     * Получает информацию о товаре на складе.
+     *
+     * @param productId ID товара
+     * @return сущность товара на складе
+     * @throws NoSpecifiedProductInWarehouseException если товар не найден на складе
+     */
     @Transactional(readOnly = true)
     public WarehouseItem getProductInfo(UUID productId) {
         return repository.findByProductId(productId)

@@ -9,14 +9,24 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Глобальный обработчик исключений для складского модуля.
+ * Обрабатывает все исключения, связанные с операциями на складе.
+ */
 @Slf4j
 @RestControllerAdvice
 public class WarehouseExceptionHandler {
 
+    /**
+     * Обрабатывает исключение при попытке добавить существующий товар на склад.
+     *
+     * @param ex исключение SpecifiedProductAlreadyInWarehouseException
+     * @return ResponseEntity с информацией об ошибке
+     */
     @ExceptionHandler(SpecifiedProductAlreadyInWarehouseException.class)
     public ResponseEntity<Map<String, Object>> handleProductAlreadyExists(
             SpecifiedProductAlreadyInWarehouseException ex) {
-        log.error("Product already exists in warehouse: {}", ex.getMessage());
+        log.error("Товар уже существует на складе: {}", ex.getMessage());
 
         Map<String, Object> response = new HashMap<>();
         response.put("httpStatus", ex.getHttpStatus());
@@ -26,10 +36,16 @@ public class WarehouseExceptionHandler {
         return ResponseEntity.status(ex.getHttpStatus()).body(response);
     }
 
+    /**
+     * Обрабатывает исключение при отсутствии товара на складе.
+     *
+     * @param ex исключение NoSpecifiedProductInWarehouseException
+     * @return ResponseEntity с информацией об ошибке
+     */
     @ExceptionHandler(NoSpecifiedProductInWarehouseException.class)
     public ResponseEntity<Map<String, Object>> handleProductNotFound(
             NoSpecifiedProductInWarehouseException ex) {
-        log.error("Product not found in warehouse: {}", ex.getMessage());
+        log.error("Товар не найден на складе: {}", ex.getMessage());
 
         Map<String, Object> response = new HashMap<>();
         response.put("httpStatus", ex.getHttpStatus());
@@ -39,10 +55,16 @@ public class WarehouseExceptionHandler {
         return ResponseEntity.status(ex.getHttpStatus()).body(response);
     }
 
+    /**
+     * Обрабатывает исключение при недостаточном количестве товара на складе.
+     *
+     * @param ex исключение ProductInShoppingCartLowQuantityInWarehouseException
+     * @return ResponseEntity с информацией об ошибке и списком недостающих товаров
+     */
     @ExceptionHandler(ProductInShoppingCartLowQuantityInWarehouseException.class)
     public ResponseEntity<Map<String, Object>> handleInsufficientQuantity(
             ProductInShoppingCartLowQuantityInWarehouseException ex) {
-        log.error("Insufficient quantity in warehouse: {}", ex.getMessage());
+        log.error("Недостаточное количество товара на складе: {}", ex.getMessage());
 
         Map<String, Object> response = new HashMap<>();
         response.put("httpStatus", ex.getHttpStatus());
@@ -53,9 +75,15 @@ public class WarehouseExceptionHandler {
         return ResponseEntity.status(ex.getHttpStatus()).body(response);
     }
 
+    /**
+     * Обрабатывает все необработанные исключения.
+     *
+     * @param ex исключение
+     * @return ResponseEntity с информацией о внутренней ошибке сервера
+     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
-        log.error("Unexpected error: {}", ex.getMessage(), ex);
+        log.error("Непредвиденная ошибка: {}", ex.getMessage(), ex);
 
         Map<String, Object> response = new HashMap<>();
         response.put("httpStatus", HttpStatus.INTERNAL_SERVER_ERROR);

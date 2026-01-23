@@ -1,42 +1,41 @@
 package ru.yandex.practicum.mapper;
 
 import org.mapstruct.*;
-import org.springframework.data.domain.Page;
-import ru.yandex.practicum.dto.PageProductDTO;
 import ru.yandex.practicum.dto.ProductDTO;
 import ru.yandex.practicum.entity.ProductEntity;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
-@Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
+/**
+ * Маппер для преобразования между сущностью и DTO товара.
+ * Использует MapStruct для автоматического маппинга.
+ */
+@Mapper(
+        componentModel = MappingConstants.ComponentModel.SPRING,
+        nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE
+)
 public interface ProductMapper {
 
+    /**
+     * Преобразует сущность в DTO.
+     *
+     * @param entity Сущность товара
+     * @return DTO товара
+     */
     ProductDTO toDTO(ProductEntity entity);
 
+    /**
+     * Преобразует DTO в сущность.
+     *
+     * @param dto DTO товара
+     * @return Сущность товара
+     */
     ProductEntity toEntity(ProductDTO dto);
 
+    /**
+     * Обновляет сущность из DTO.
+     *
+     * @param entity Сущность для обновления
+     * @param dto    DTO с новыми данными
+     */
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     void updateProductFromDto(@MappingTarget ProductEntity entity, ProductDTO dto);
-
-    default PageProductDTO toPageDTO(Page<ProductEntity> page) {
-        if (page == null) return null;
-
-        List<ProductDTO> content = page.getContent().stream()
-                .map(this::toDTO)
-                .collect(Collectors.toList());
-
-        return PageProductDTO.builder()
-                .content(content)
-                .totalElements(page.getTotalElements())
-                .totalPages(page.getTotalPages())
-                .first(page.isFirst())
-                .last(page.isLast())
-                .size(page.getSize())
-                .number(page.getNumber())
-                .numberOfElements(page.getNumberOfElements())
-                .empty(page.isEmpty())
-                .sort(page.getSort())
-                .build();
-    }
 }

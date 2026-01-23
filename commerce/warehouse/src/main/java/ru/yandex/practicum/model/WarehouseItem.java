@@ -9,6 +9,10 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+/**
+ * Сущность, представляющая товар на складе.
+ * Содержит информацию о товаре, его количестве и физических характеристиках.
+ */
 @Entity
 @Table(name = "warehouse_items")
 @Data
@@ -49,16 +53,27 @@ public class WarehouseItem {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    /**
+     * Автоматически устанавливает дату создания перед сохранением.
+     */
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
     }
 
+    /**
+     * Автоматически обновляет дату изменения перед обновлением.
+     */
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
 
+    /**
+     * Рассчитывает объем товара.
+     *
+     * @return объем товара (ширина * высота * глубина)
+     */
     public Double getVolume() {
         return width * height * depth;
     }

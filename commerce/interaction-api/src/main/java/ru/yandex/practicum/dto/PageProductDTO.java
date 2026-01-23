@@ -4,21 +4,24 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import org.springframework.data.domain.Sort;
+
 import java.util.List;
 
+/**
+ * DTO для пагинированного списка товаров.
+ * Содержит информацию о текущей странице и сортировке.
+ */
 @Data
 @Builder
 @AllArgsConstructor
 public class PageProductDTO {
-    private long totalElements;
-    private int totalPages;
-    private boolean first;
-    private boolean last;
-    private int size;
+    /**
+     * Список товаров на текущей странице.
+     */
     private List<ProductDTO> content;
-    private int number;
+
+    /**
+     * Информация о сортировке результатов.
+     */
     private Sort sort;
-    private int numberOfElements;
-    private PageableObject pageable;
-    private boolean empty;
 }

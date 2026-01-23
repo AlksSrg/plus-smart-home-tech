@@ -9,20 +9,37 @@ import lombok.NoArgsConstructor;
 
 import java.util.UUID;
 
+/**
+ * DTO для запроса на добавление нового товара на склад.
+ */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class NewProductInWarehouseRequest {
-    @NotNull
+
+    /**
+     * Уникальный идентификатор товара.
+     */
+    @NotNull(message = "ID товара не может быть null")
     private UUID productId;
 
+    /**
+     * Признак хрупкости товара.
+     */
     private Boolean fragile;
 
-    @NotNull
+    /**
+     * Габаритные размеры товара.
+     */
+    @NotNull(message = "Размеры не могут быть null")
     private DimensionDto dimension;
 
-    @NotNull
+    /**
+     * Вес товара.
+     * Должен быть не менее 1.
+     */
+    @NotNull(message = "Вес не может быть null")
     @Min(value = 1, message = "Вес должен быть не менее 1")
     private Double weight;
 }
