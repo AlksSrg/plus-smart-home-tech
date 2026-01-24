@@ -38,7 +38,7 @@ services:
     image: postgres:16.1
     container_name: analyzer-db
     ports:
-      - "6432:5432"
+      - "6431:5432"
     environment:
       - POSTGRES_DB=smart-home
       - POSTGRES_USER=dbuser
@@ -48,3 +48,33 @@ services:
       timeout: 5s
       interval: 5s
       retries: 10
+
+  commerce-cart-db:
+    image: postgres:16.1
+    container_name: commerce-cart-db
+    ports:
+      - "6432:5432"
+    environment:
+      - POSTGRES_DB=cart-db
+      - POSTGRES_USER=dbuser
+      - POSTGRES_PASSWORD=12345
+
+  commerce-store-db:
+    image: postgres:16.1
+    container_name: commerce-store-db
+    ports:
+      - "6433:5432"
+    environment:
+      - POSTGRES_DB=store-db
+      - POSTGRES_USER=dbuser
+      - POSTGRES_PASSWORD=12345
+
+  commerce-warehouse-db:
+    image: postgres:16.1
+    container_name: commerce-warehouse-db
+    ports:
+      - "6434:5432"
+    environment:
+      - POSTGRES_DB=warehouse-db
+      - POSTGRES_USER=dbuser
+      - POSTGRES_PASSWORD=12345

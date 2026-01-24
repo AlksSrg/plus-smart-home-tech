@@ -1,0 +1,48 @@
+spring:
+  application:
+    name: analyzer
+
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:6432}/${DB_NAME:smart-home}
+    username: ${DB_USERNAME:dbuser}
+    password: ${DB_PASSWORD:12345}
+
+# Server
+server:
+  port: 8083
+
+# Kafka Configuration
+kafka:
+  bootstrap-servers: ${KAFKA_HOST:localhost}:${KAFKA_PORT:9092}
+  group-id:
+    snapshot: analyzer.snapshots
+    hub: analyzer.hubs
+  topics:
+    snapshot: telemetry.snapshots.v1
+    hub: telemetry.hubs.v1
+  consumer:
+    enable-auto-commit: false
+    auto-offset-reset: earliest
+
+analyzer:
+  topic:
+    hub-event-topic: telemetry.hubs.v1
+    snapshots-topic: telemetry.snapshots.v1
+
+# gRPC Client Configuration
+grpc:
+  client:
+    hub-router:
+      address: static://${HUB_ROUTER_HOST:localhost}:${HUB_ROUTER_PORT:59090}
+      enable-keep-alive: true
+      keep-alive-without-calls: true
+      negotiation-type: plaintext
+
+# Logging Configuration
+logging:
+  level:
+    ru.yandex.practicum: ${LOG_LEVEL:INFO}
+    org.apache.kafka: ${KAFKA_LOG_LEVEL:WARN}
+    org.springframework.kafka: ${KAFKA_LOG_LEVEL:WARN}
+    org.hibernate.SQL: ${HIBERNATE_SQL_LOG_LEVEL:DEBUG}
