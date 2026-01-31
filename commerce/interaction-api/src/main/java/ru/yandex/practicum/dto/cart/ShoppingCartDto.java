@@ -1,7 +1,6 @@
 package ru.yandex.practicum.dto.cart;
 
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,24 +10,23 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * DTO для представления корзины покупок.
- * Содержит информацию о корзине и товарах в ней.
+ * Корзина товаров в онлайн магазине.
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class ShoppingCartDto {
-    /**
-     * Уникальный идентификатор корзины.
-     */
-    @NotNull
-    private UUID cartId;
 
     /**
-     * Товары в корзине.
-     * Ключ - ID товара, значение - количество.
+     * Идентификатор корзины в БД.
      */
-    @NotNull
-    private Map<UUID, @NotNull @Positive Integer> products;
+    @NotNull(message = "Идентификатор корзины не может быть null")
+    private UUID shoppingCartId;
+
+    /**
+     * Отображение идентификатора товара на отобранное количество.
+     */
+    @NotNull(message = "Товары не могут быть null")
+    private Map<UUID, Integer> products;
 }

@@ -5,9 +5,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
-import ru.yandex.practicum.dto.PageProductDTO;
-import ru.yandex.practicum.dto.ProductDTO;
-import ru.yandex.practicum.dto.SetProductQuantityStateRequest;
+import ru.yandex.practicum.dto.product.PageProductDto;
+import ru.yandex.practicum.dto.product.ProductDto;
+import ru.yandex.practicum.dto.product.SetProductQuantityStateRequest;
 import ru.yandex.practicum.enums.ProductCategory;
 import ru.yandex.practicum.enums.QuantityState;
 import ru.yandex.practicum.service.ProductService;
@@ -34,7 +34,7 @@ public class ProductController {
      * @return Список товаров с информацией о пагинации
      */
     @GetMapping
-    public PageProductDTO getAllProducts(
+    public PageProductDto getAllProducts(
             @RequestParam ProductCategory category,
             Pageable pageable) {
 
@@ -45,25 +45,25 @@ public class ProductController {
     /**
      * Создает новый товар.
      *
-     * @param productDTO DTO с данными товара
+     * @param productDto DTO с данными товара
      * @return Созданный товар
      */
     @PutMapping
-    public ProductDTO createProduct(@Valid @RequestBody ProductDTO productDTO) {
-        log.info("Создание товара: {}", productDTO.getProductName());
-        return productService.createProduct(productDTO);
+    public ProductDto createProduct(@Valid @RequestBody ProductDto productDto) {
+        log.info("Создание товара: {}", productDto.getProductName());
+        return productService.createProduct(productDto);
     }
 
     /**
      * Обновляет существующий товар.
      *
-     * @param productDTO DTO с обновленными данными
+     * @param productDto DTO с обновленными данными
      * @return Обновленный товар
      */
     @PostMapping
-    public ProductDTO updateProduct(@Valid @RequestBody ProductDTO productDTO) {
-        log.info("Обновление товара: {}", productDTO.getProductName());
-        return productService.updateProduct(productDTO);
+    public ProductDto updateProduct(@Valid @RequestBody ProductDto productDto) {
+        log.info("Обновление товара: {}", productDto.getProductName());
+        return productService.updateProduct(productDto);
     }
 
     /**
@@ -108,7 +108,7 @@ public class ProductController {
      * @return Товар
      */
     @GetMapping("/{productId}")
-    public ProductDTO getProductById(@PathVariable UUID productId) {
+    public ProductDto getProductById(@PathVariable UUID productId) {
         log.info("Запрос товара: ID={}", productId);
         return productService.getProductById(productId);
     }

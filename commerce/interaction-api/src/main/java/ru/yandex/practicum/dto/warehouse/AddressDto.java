@@ -6,8 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * DTO для представления адреса склада.
- * Используется для расчёта доставки.
+ * Представление адреса в системе.
  */
 @Data
 @Builder
@@ -16,27 +15,27 @@ import lombok.NoArgsConstructor;
 public class AddressDto {
 
     /**
-     * Страна расположения склада.
+     * Страна.
      */
     private String country;
 
     /**
-     * Город расположения склада.
+     * Город.
      */
     private String city;
 
     /**
-     * Улица расположения склада.
+     * Улица.
      */
     private String street;
 
     /**
-     * Номер дома склада.
+     * Дом.
      */
     private String house;
 
     /**
-     * Номер помещения/квартиры склада.
+     * Квартира.
      */
     private String flat;
 }

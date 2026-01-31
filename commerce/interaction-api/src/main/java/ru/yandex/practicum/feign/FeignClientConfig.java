@@ -1,48 +1,41 @@
 package ru.yandex.practicum.feign;
 
+import feign.Feign;
 import feign.Logger;
-import feign.RequestInterceptor;
-import feign.codec.ErrorDecoder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import ru.yandex.practicum.feign.decoder.FeignErrorDecoder;
 
 /**
- * Конфигурация для Feign-клиентов.
- * Определяет настройки логирования, обработки ошибок и перехватчики запросов.
+ * Конфигурационный класс для настройки Feign клиентов.
+ * Определяет общие настройки для всех Feign клиентов.
+ * Настройки включают обработку ошибок, логирование и таймауты.
  */
 @Configuration
 public class FeignClientConfig {
 
     /**
-     * Настраивает уровень логирования для Feign-клиентов.
+     * Создает кастомный билдер Feign с расширенным обработчиком ошибок.
+     * Используется FeignErrorDecoder для улучшенной обработки HTTP ошибок
+     * с извлечением сообщений из тела ответа и логированием.
      *
-     * @return уровень логирования FULL (полный)
+     * @return Feign.Builder с кастомным декодером ошибок
+     */
+    @Bean
+    public Feign.Builder feignBuilder() {
+        return Feign.builder()
+                .errorDecoder(new FeignErrorDecoder());
+    }
+
+    /**
+     * Настраивает уровень логирования Feign клиентов.
+     * Уровень FULL включает логирование заголовков, тела запросов и ответов,
+     * что полезно для отладки межсервисного взаимодействия.
+     *
+     * @return уровень логирования FULL
      */
     @Bean
     public Logger.Level feignLoggerLevel() {
         return Logger.Level.FULL;
-    }
-
-    /**
-     * Регистрирует декодер ошибок для обработки исключений Feign.
-     *
-     * @return кастомный декодер ошибок
-     */
-    @Bean
-    public ErrorDecoder errorDecoder() {
-        return new FeignErrorDecoder();
-    }
-
-    /**
-     * Регистрирует перехватчик запросов для добавления заголовков.
-     *
-     * @return перехватчик, добавляющий заголовки Content-Type и Accept
-     */
-    @Bean
-    public RequestInterceptor requestInterceptor() {
-        return requestTemplate -> {
-            requestTemplate.header("Content-Type", "application/json");
-            requestTemplate.header("Accept", "application/json");
-        };
     }
 }

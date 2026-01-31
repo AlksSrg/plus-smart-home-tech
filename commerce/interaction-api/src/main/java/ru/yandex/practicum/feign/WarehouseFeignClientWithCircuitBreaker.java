@@ -3,10 +3,13 @@ package ru.yandex.practicum.feign;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.openfeign.FallbackFactory;
 import org.springframework.stereotype.Component;
-import ru.yandex.practicum.dto.warehouse.AddProductToWarehouseRequest;
+import ru.yandex.practicum.dto.cart.ShoppingCartDto;
 import ru.yandex.practicum.dto.warehouse.AddressDto;
 import ru.yandex.practicum.dto.warehouse.BookedProductsDto;
-import ru.yandex.practicum.dto.warehouse.NewProductInWarehouseRequest;
+import ru.yandex.practicum.exception.order.ServiceUnavailableException;
+
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * Фабрика для создания резервной реализации Feign клиента при недоступности сервиса склада.
@@ -39,37 +42,27 @@ public class WarehouseFeignClientWithCircuitBreaker implements FallbackFactory<W
         }
 
         @Override
-        public void addNewProduct(NewProductInWarehouseRequest request) {
-            log.error("Резервный метод: Невозможно добавить новый товар на склад");
-            throw new RuntimeException("Сервис склада недоступен: " + cause.getMessage());
+        public BookedProductsDto checkQuantityProducts(ShoppingCartDto shoppingCartDto) {
+            log.error("Сервис склада недоступен. Невозможно проверить доступность товаров для корзины");
+            throw new ServiceUnavailableException("Нет заказываемого товара на складе");
         }
 
         @Override
-        public BookedProductsDto checkProductQuantity(ru.yandex.practicum.dto.cart.ShoppingCartDto shoppingCartDto) {
-            log.warn("Резервный метод: Проверка склада пропущена, разрешаем создание корзины");
-            return BookedProductsDto.builder()
-                    .deliveryWeight(0.0)
-                    .deliveryVolume(0.0)
-                    .fragile(false)
-                    .build();
+        public void returnProductToWarehouse(Map<UUID, Integer> products) {
+            log.error("Сервис склада недоступен. Невозможно вернуть товары на склад");
+            throw new ServiceUnavailableException("Сервис склада недоступен");
         }
 
         @Override
-        public void addProductQuantity(AddProductToWarehouseRequest request) {
-            log.error("Резервный метод: Невозможно добавить количество товара на склад");
-            throw new RuntimeException("Сервис склада недоступен: " + cause.getMessage());
+        public void getProductOnOrderForDelivery(Map<UUID, Integer> products, UUID orderId) {
+            log.error("Сервис склада недоступен. Невозможно зарезервировать товары для доставки заказа: {}", orderId);
+            throw new ServiceUnavailableException("Сервис склада недоступен");
         }
 
         @Override
-        public AddressDto getWarehouseAddress() {
-            log.warn("Резервный метод: Возвращаем адрес склада по умолчанию");
-            return AddressDto.builder()
-                    .country("DEFAULT_ADDRESS")
-                    .city("DEFAULT_ADDRESS")
-                    .street("DEFAULT_ADDRESS")
-                    .house("DEFAULT_ADDRESS")
-                    .flat("DEFAULT_ADDRESS")
-                    .build();
+        public AddressDto getAddress() {
+            log.error("Сервис склада недоступен. Невозможно получить адрес склада");
+            throw new ServiceUnavailableException("Сервис склада недоступен");
         }
     }
 }

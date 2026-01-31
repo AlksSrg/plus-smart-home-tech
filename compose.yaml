@@ -4,8 +4,8 @@ services:
     hostname: kafka
     container_name: kafka
     ports:
-      - "9092:9092" # for client connections
-      - "9101:9101" # JMX
+      - "9092:9092"
+      - "9101:9101"
     restart: unless-stopped
     environment:
       KAFKA_NODE_ID: 1
@@ -58,6 +58,11 @@ services:
       - POSTGRES_DB=cart-db
       - POSTGRES_USER=dbuser
       - POSTGRES_PASSWORD=12345
+    healthcheck:
+      test: pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER
+      timeout: 5s
+      interval: 5s
+      retries: 10
 
   commerce-store-db:
     image: postgres:16.1
@@ -68,6 +73,11 @@ services:
       - POSTGRES_DB=store-db
       - POSTGRES_USER=dbuser
       - POSTGRES_PASSWORD=12345
+    healthcheck:
+      test: pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER
+      timeout: 5s
+      interval: 5s
+      retries: 10
 
   commerce-warehouse-db:
     image: postgres:16.1
@@ -78,3 +88,53 @@ services:
       - POSTGRES_DB=warehouse-db
       - POSTGRES_USER=dbuser
       - POSTGRES_PASSWORD=12345
+    healthcheck:
+      test: pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER
+      timeout: 5s
+      interval: 5s
+      retries: 10
+
+  commerce-delivery-db:
+    image: postgres:16.1
+    container_name: commerce-delivery-db
+    ports:
+      - "6435:5432"
+    environment:
+      - POSTGRES_DB=delivery-db
+      - POSTGRES_USER=dbuser
+      - POSTGRES_PASSWORD=12345
+    healthcheck:
+      test: pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER
+      timeout: 5s
+      interval: 5s
+      retries: 10
+
+  commerce-order-db:
+    image: postgres:16.1
+    container_name: commerce-order-db
+    ports:
+      - "6436:5432"
+    environment:
+      - POSTGRES_DB=order-db
+      - POSTGRES_USER=dbuser
+      - POSTGRES_PASSWORD=12345
+    healthcheck:
+      test: pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER
+      timeout: 5s
+      interval: 5s
+      retries: 10
+
+  commerce-payment-db:
+    image: postgres:16.1
+    container_name: commerce-payment-db
+    ports:
+      - "6437:5432"
+    environment:
+      - POSTGRES_DB=payment-db
+      - POSTGRES_USER=dbuser
+      - POSTGRES_PASSWORD=12345
+    healthcheck:
+      test: pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER
+      timeout: 5s
+      interval: 5s
+      retries: 10

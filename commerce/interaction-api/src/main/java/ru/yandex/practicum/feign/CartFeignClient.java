@@ -7,8 +7,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
-import ru.yandex.practicum.dto.PageProductDTO;
-import ru.yandex.practicum.dto.SetProductQuantityStateRequest;
+import ru.yandex.practicum.dto.product.PageProductDto;
+import ru.yandex.practicum.dto.product.SetProductQuantityStateRequest;
 
 import java.util.List;
 import java.util.Map;
@@ -33,7 +33,7 @@ public interface CartFeignClient {
      * @throws FeignException при ошибке обращения к сервису
      */
     @GetMapping
-    PageProductDTO getShoppingCart(@RequestParam String userName) throws FeignException;
+    PageProductDto getShoppingCart(@RequestParam String userName) throws FeignException;
 
     /**
      * Добавить товары в корзину.
@@ -44,7 +44,7 @@ public interface CartFeignClient {
      * @throws FeignException при ошибке обращения к сервису
      */
     @PutMapping
-    PageProductDTO addProductInCart(
+    PageProductDto addProductInCart(
             @RequestParam String userName,
             @RequestBody @NotEmpty Map<UUID, @NotNull @Positive Integer> products
     ) throws FeignException;
@@ -67,7 +67,7 @@ public interface CartFeignClient {
      * @throws FeignException при ошибке обращения к сервису
      */
     @PostMapping("/remove")
-    PageProductDTO removeProductFromCart(
+    PageProductDto removeProductFromCart(
             @RequestParam String userName,
             @RequestBody @NotEmpty List<UUID> productsIds
     ) throws FeignException;
@@ -81,7 +81,7 @@ public interface CartFeignClient {
      * @throws FeignException при ошибке обращения к сервису
      */
     @PostMapping("/change-quantity")
-    PageProductDTO changeQuantityInCart(
+    PageProductDto changeQuantityInCart(
             @RequestParam String userName,
             @Valid @RequestBody SetProductQuantityStateRequest quantityRequest
     ) throws FeignException;

@@ -1,0 +1,48 @@
+spring:
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+      default:
+        filters: PrefixPath=/api/v1
+      routes:
+        - id: shopping_cart_service_route
+          uri: lb://shopping-cart
+          predicates:
+            - Path=/shopping-cart/**
+
+        - id: shopping_store_service_route
+          uri: lb://shopping-store
+          predicates:
+            - Path=/shopping-store/**
+          filters:
+            - name: Retry
+              args:
+                retries: 3
+                statuses: NOT_FOUND
+                exceptions: ru.yandex.practicum.store.ProductNotFoundException
+                methods: GET,POST
+
+        - id: warehouse_service_route
+          uri: lb://warehouse
+          predicates:
+            - Path=/warehouse/**
+
+        - id: delivery_service_route
+          uri: lb://delivery
+          predicates:
+            - Path=/delivery/**
+
+        - id: order_service_route
+          uri: lb://order
+          predicates:
+            - Path=/order/**
+
+        - id: payment_service_route
+          uri: lb://payment
+          predicates:
+            - Path=/payment/**
+
+server:
+  port: 8080

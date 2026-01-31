@@ -8,9 +8,9 @@ import ru.yandex.practicum.dto.warehouse.AddProductToWarehouseRequest;
 import ru.yandex.practicum.dto.warehouse.AddressDto;
 import ru.yandex.practicum.dto.warehouse.BookedProductsDto;
 import ru.yandex.practicum.dto.warehouse.NewProductInWarehouseRequest;
-import ru.yandex.practicum.exception.NoSpecifiedProductInWarehouseException;
-import ru.yandex.practicum.exception.ProductInShoppingCartLowQuantityInWarehouseException;
-import ru.yandex.practicum.exception.SpecifiedProductAlreadyInWarehouseException;
+import ru.yandex.practicum.exception.warehouse.NoSpecifiedProductInWarehouseException;
+import ru.yandex.practicum.exception.warehouse.ProductInShoppingCartLowQuantityInWarehouseException;
+import ru.yandex.practicum.exception.warehouse.SpecifiedProductAlreadyInWarehouseException;
 import ru.yandex.practicum.model.WarehouseItem;
 import ru.yandex.practicum.repository.WarehouseItemRepository;
 
@@ -72,7 +72,7 @@ public class WarehouseService {
      */
     @Transactional
     public BookedProductsDto checkProductQuantity(ru.yandex.practicum.dto.cart.ShoppingCartDto shoppingCartDto) {
-        log.info("Проверка доступности товаров для корзины: {}", shoppingCartDto.getCartId());
+        log.info("Проверка доступности товаров для корзины: {}", shoppingCartDto.getShoppingCartId());
 
         Map<UUID, Integer> unavailableProducts = new HashMap<>();
         Double totalWeight = 0.0;
