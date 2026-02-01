@@ -4,9 +4,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.yandex.practicum.config.DeliveryProperties;
 import ru.yandex.practicum.dto.delivery.DeliveryDto;
-import ru.yandex.practicum.enums.DeliveryState;
 import ru.yandex.practicum.dto.order.OrderDto;
+import ru.yandex.practicum.enums.DeliveryState;
 import ru.yandex.practicum.exception.delivery.DeliveryNotFoundException;
 import ru.yandex.practicum.feign.OrderFeignClient;
 import ru.yandex.practicum.feign.WarehouseFeignClient;
@@ -32,6 +33,7 @@ public class DeliveryService {
     private final DeliveryMapper deliveryMapper;
     private final WarehouseFeignClient warehouseClient;
     private final OrderFeignClient orderClient;
+    private final DeliveryProperties deliveryProperties;
 
     /**
      * Создает новую доставку на основе предоставленных данных.
@@ -160,20 +162,29 @@ public class DeliveryService {
             throw new IllegalArgumentException("The address cannot be null");
         }
 
-        double baseCost = 5.0;
-        double warehouseMarkup = fromAddressToString(delivery).contains("ADDRESS_2") ? 2.0 : 1.0;
-        double deliveryCost = baseCost + (baseCost * warehouseMarkup);
+        double deliveryCost = deliveryProperties.getCost().getBase();
 
+        // Наценка в зависимости от склада
+        double warehouseMarkup = fromAddressToString(delivery)
+                .contains(deliveryProperties.getWarehouse().getAddressIndicator())
+                ? deliveryProperties.getMarkup().getWarehouse().getHigh()
+                : deliveryProperties.getMarkup().getWarehouse().getLow();
+        deliveryCost += deliveryProperties.getCost().getBase() * warehouseMarkup;
+
+        // Наценка за хрупкие товары
         if (Boolean.TRUE.equals(orderDto.getFragile())) {
-            deliveryCost += deliveryCost * 0.2;
+            deliveryCost += deliveryCost * deliveryProperties.getMarkup().getFragilePercentage();
         }
 
+        // Наценка за вес и объем
         if (orderDto.getDeliveryWeight() != null && orderDto.getDeliveryVolume() != null) {
-            deliveryCost += orderDto.getDeliveryWeight() * 0.3 + orderDto.getDeliveryVolume() * 0.2;
+            deliveryCost += orderDto.getDeliveryWeight() * deliveryProperties.getCost().getWeightPerUnit()
+                    + orderDto.getDeliveryVolume() * deliveryProperties.getCost().getVolumePerUnit();
         }
 
+        // Наценка за доставку на другую улицу
         if (!isSameStreet(delivery)) {
-            deliveryCost += deliveryCost * 0.2;
+            deliveryCost += deliveryCost * deliveryProperties.getMarkup().getDifferentStreetPercentage();
         }
 
         log.info("Calculated delivery cost: {} for order: {}", deliveryCost, orderDto.getOrderId());

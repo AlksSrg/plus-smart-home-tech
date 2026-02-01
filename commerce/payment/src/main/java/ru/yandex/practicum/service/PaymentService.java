@@ -7,8 +7,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.dto.order.OrderDto;
 import ru.yandex.practicum.dto.payment.PaymentDto;
-import ru.yandex.practicum.enums.PaymentState;
 import ru.yandex.practicum.dto.product.ProductDto;
+import ru.yandex.practicum.enums.PaymentState;
 import ru.yandex.practicum.exception.payment.ImpossibleCalculateCostOrderException;
 import ru.yandex.practicum.exception.payment.NoFoundPaymentException;
 import ru.yandex.practicum.feign.OrderFeignClient;
@@ -37,7 +37,7 @@ public class PaymentService {
     private final OrderFeignClient orderClient;
 
     @Value("${payment.VAT:0.2}")
-    private Double VAT;
+    private Double vat;
 
     /**
      * Создает платеж для заказа.
@@ -63,7 +63,7 @@ public class PaymentService {
                 .orderId(orderDto.getOrderId())
                 .totalPayment(totalCost)
                 .deliveryTotal(orderDto.getDeliveryPrice())
-                .feeTotal(productCost * VAT)
+                .feeTotal(productCost * vat)
                 .state(PaymentState.PENDING)
                 .build();
 
@@ -94,7 +94,7 @@ public class PaymentService {
             );
         }
 
-        Double total = productPrice + (productPrice * VAT) + deliveryPrice;
+        Double total = productPrice + (productPrice * vat) + deliveryPrice;
         log.debug("Calculated total cost: {} for order: {}", total, orderDto.getOrderId());
         return total;
     }

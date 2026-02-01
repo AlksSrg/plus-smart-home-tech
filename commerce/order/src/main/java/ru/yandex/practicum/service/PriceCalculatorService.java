@@ -3,6 +3,7 @@ package ru.yandex.practicum.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.config.DeliveryCalculationProperties;
 import ru.yandex.practicum.dto.product.ProductDto;
 import ru.yandex.practicum.exception.order.ServiceUnavailableException;
 import ru.yandex.practicum.feign.ShoppingStoreClient;
@@ -22,6 +23,7 @@ import java.util.UUID;
 public class PriceCalculatorService {
 
     private final ShoppingStoreClient shoppingStoreClient;
+    private final DeliveryCalculationProperties deliveryProperties;
 
     /**
      * Рассчитывает общую стоимость товаров в заказе.
@@ -86,35 +88,34 @@ public class PriceCalculatorService {
         log.debug("Расчет стоимости доставки: вес={}, объем={}, хрупкий={}",
                 weight, volume, isFragile);
 
-        BigDecimal basePrice = new BigDecimal("5.00");
+        BigDecimal basePrice = deliveryProperties.getBasePrice();
 
-        if (weight != null && weight > 10.0) {
-            BigDecimal weightSurcharge = BigDecimal.valueOf(weight - 10.0)
-                    .multiply(new BigDecimal("0.50"))
+        if (weight != null && weight > deliveryProperties.getWeight().getThreshold()) {
+            BigDecimal weightSurcharge = BigDecimal.valueOf(weight - deliveryProperties.getWeight().getThreshold())
+                    .multiply(deliveryProperties.getWeight().getSurchargePerKg())
                     .setScale(2, RoundingMode.HALF_UP);
             basePrice = basePrice.add(weightSurcharge);
             log.debug("Наценка за вес: {}", weightSurcharge);
         }
 
-        if (volume != null && volume > 1.0) {
-            BigDecimal volumeSurcharge = BigDecimal.valueOf(volume - 1.0)
-                    .multiply(new BigDecimal("2.00"))
+        if (volume != null && volume > deliveryProperties.getVolume().getThreshold()) {
+            BigDecimal volumeSurcharge = BigDecimal.valueOf(volume - deliveryProperties.getVolume().getThreshold())
+                    .multiply(deliveryProperties.getVolume().getSurchargePerCubicMeter())
                     .setScale(2, RoundingMode.HALF_UP);
             basePrice = basePrice.add(volumeSurcharge);
             log.debug("Наценка за объем: {}", volumeSurcharge);
         }
 
         if (Boolean.TRUE.equals(isFragile)) {
-            BigDecimal fragileSurcharge = basePrice.multiply(new BigDecimal("0.20"))
+            BigDecimal fragileSurcharge = basePrice.multiply(deliveryProperties.getFragile().getSurchargePercentage())
                     .setScale(2, RoundingMode.HALF_UP);
             basePrice = basePrice.add(fragileSurcharge);
             log.debug("Наценка за хрупкость: {}", fragileSurcharge);
         }
 
-        BigDecimal minPrice = new BigDecimal("3.00");
-        if (basePrice.compareTo(minPrice) < 0) {
-            basePrice = minPrice;
-            log.debug("Установлена минимальная стоимость доставки: {}", minPrice);
+        if (basePrice.compareTo(deliveryProperties.getMinPrice()) < 0) {
+            basePrice = deliveryProperties.getMinPrice();
+            log.debug("Установлена минимальная стоимость доставки: {}", deliveryProperties.getMinPrice());
         }
 
         basePrice = basePrice.setScale(2, RoundingMode.HALF_UP);

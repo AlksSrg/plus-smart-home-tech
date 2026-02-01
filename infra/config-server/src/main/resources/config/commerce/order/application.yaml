@@ -13,3 +13,17 @@ spring:
 
 server:
   port: 0
+
+# Конфигурация расчета стоимости доставки
+delivery:
+  calculation:
+    base-price: 5.00
+    min-price: 3.00
+    weight:
+      threshold: 10.0
+      surcharge-per-kg: 0.50
+    volume:
+      threshold: 1.0
+      surcharge-per-cubic-meter: 2.00
+    fragile:
+      surcharge-percentage: 0.20
