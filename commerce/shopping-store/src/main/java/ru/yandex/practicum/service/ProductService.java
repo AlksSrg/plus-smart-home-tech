@@ -6,14 +6,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.yandex.practicum.dto.PageProductDTO;
-import ru.yandex.practicum.dto.ProductDTO;
-import ru.yandex.practicum.dto.SetProductQuantityStateRequest;
+import ru.yandex.practicum.dto.product.PageProductDto;
+import ru.yandex.practicum.dto.product.ProductDto;
+import ru.yandex.practicum.dto.product.SetProductQuantityStateRequest;
 import ru.yandex.practicum.entity.ProductEntity;
 import ru.yandex.practicum.enums.ProductCategory;
 import ru.yandex.practicum.enums.ProductState;
 import ru.yandex.practicum.enums.QuantityState;
-import ru.yandex.practicum.exception.ProductNotFoundException;
+import ru.yandex.practicum.exception.shoppingStore.ProductNotFoundException;
 import ru.yandex.practicum.mapper.ProductMapper;
 import ru.yandex.practicum.repository.ProductRepository;
 
@@ -40,11 +40,11 @@ public class ProductService {
      * @param pageable Параметры пагинации и сортировки
      * @return DTO со списком товаров
      */
-    public PageProductDTO getProductsByCategory(ProductCategory category, Pageable pageable) {
+    public PageProductDto getProductsByCategory(ProductCategory category, Pageable pageable) {
         log.debug("Получение товаров по категории: {}", category);
         Page<ProductEntity> page = productRepository.findByProductCategory(category, pageable);
 
-        return PageProductDTO.builder()
+        return PageProductDto.builder()
                 .content(page.getContent().stream()
                         .map(productMapper::toDTO)
                         .collect(Collectors.toList()))
@@ -59,7 +59,7 @@ public class ProductService {
      * @return DTO товара
      * @throws ProductNotFoundException если товар не найден
      */
-    public ProductDTO getProductById(UUID productId) {
+    public ProductDto getProductById(UUID productId) {
         log.debug("Получение товара по ID: {}", productId);
         return productRepository.findByProductId(productId)
                 .map(productMapper::toDTO)
@@ -69,14 +69,13 @@ public class ProductService {
     /**
      * Создает новый товар.
      *
-     * @param productDTO DTO с данными нового товара
+     * @param productDto DTO с данными нового товара
      * @return Созданный товар в формате DTO
      */
     @Transactional
-    public ProductDTO createProduct(ProductDTO productDTO) {
-        log.info("Создание товара: {}", productDTO.getProductName());
-
-        ProductEntity entity = productMapper.toEntity(productDTO);
+    public ProductDto createProduct(ProductDto productDto) {
+        log.info("Создание товара: {}", productDto);
+        ProductEntity entity = productMapper.toEntity(productDto);
 
         // Установка значений по умолчанию
         if (entity.getProductState() == null) {
@@ -94,20 +93,20 @@ public class ProductService {
     /**
      * Обновляет существующий товар.
      *
-     * @param productDTO DTO с обновленными данными
+     * @param productDto DTO с обновленными данными
      * @return Обновленный товар в формате DTO
      */
     @Transactional
-    public ProductDTO updateProduct(ProductDTO productDTO) {
-        log.info("Обновление товара с ID: {}", productDTO.getProductId());
+    public ProductDto updateProduct(ProductDto productDto) {
+        log.info("Обновление товара с ID: {}", productDto.getProductId());
 
-        ProductEntity existing = productRepository.findByProductId(productDTO.getProductId())
-                .orElseThrow(() -> new ProductNotFoundException("Product not found with id: " + productDTO.getProductId()));
+        ProductEntity existing = productRepository.findByProductId(productDto.getProductId())
+                .orElseThrow(() -> new ProductNotFoundException("Product not found with id: " + productDto.getProductId()));
 
-        productMapper.updateProductFromDto(existing, productDTO);
+        productMapper.updateProductFromDto(existing, productDto);
         ProductEntity updated = productRepository.save(existing);
 
-        log.info("Товар обновлен: ID={}", productDTO.getProductId());
+        log.info("Товар обновлен: ID={}", productDto.getProductId());
         return productMapper.toDTO(updated);
     }
 

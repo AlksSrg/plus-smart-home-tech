@@ -1,0 +1,30 @@
+# Hibernate
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+  # Postgres
+  datasource:
+    driverClassName: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:6435/delivery-db
+    username: dbuser
+    password: '12345'
+
+server:
+  port: 0
+
+# Конфигурация стоимости доставки
+delivery:
+  cost:
+    base: 5.0
+    weight-per-unit: 0.3
+    volume-per-unit: 0.2
+  markup:
+    fragile-percentage: 0.2
+    different-street-percentage: 0.2
+    warehouse:
+      low: 1.0
+      high: 2.0
+  warehouse:
+    address-indicator: "ADDRESS_2"

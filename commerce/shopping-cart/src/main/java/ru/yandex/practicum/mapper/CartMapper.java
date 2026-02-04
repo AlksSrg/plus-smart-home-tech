@@ -19,7 +19,7 @@ public interface CartMapper {
      * @param shoppingCart сущность корзины покупок
      * @return DTO корзины покупок
      */
-    @Mapping(source = "cartId", target = "cartId")
+    @Mapping(source = "cartId", target = "shoppingCartId")
     @Mapping(source = "products", target = "products")
     ShoppingCartDto mapToCartDto(ShoppingCart shoppingCart);
 }

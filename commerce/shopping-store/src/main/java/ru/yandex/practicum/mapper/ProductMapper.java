@@ -1,7 +1,7 @@
 package ru.yandex.practicum.mapper;
 
 import org.mapstruct.*;
-import ru.yandex.practicum.dto.ProductDTO;
+import ru.yandex.practicum.dto.product.ProductDto;
 import ru.yandex.practicum.entity.ProductEntity;
 
 /**
@@ -20,7 +20,7 @@ public interface ProductMapper {
      * @param entity Сущность товара
      * @return DTO товара
      */
-    ProductDTO toDTO(ProductEntity entity);
+    ProductDto toDTO(ProductEntity entity);
 
     /**
      * Преобразует DTO в сущность.
@@ -28,7 +28,7 @@ public interface ProductMapper {
      * @param dto DTO товара
      * @return Сущность товара
      */
-    ProductEntity toEntity(ProductDTO dto);
+    ProductEntity toEntity(ProductDto dto);
 
     /**
      * Обновляет сущность из DTO.
@@ -37,5 +37,5 @@ public interface ProductMapper {
      * @param dto    DTO с новыми данными
      */
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    void updateProductFromDto(@MappingTarget ProductEntity entity, ProductDTO dto);
+    void updateProductFromDto(@MappingTarget ProductEntity entity, ProductDto dto);
 }

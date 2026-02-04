@@ -7,9 +7,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.dto.cart.ChangeProductQuantityRequest;
 import ru.yandex.practicum.dto.cart.ShoppingCartDto;
-import ru.yandex.practicum.exception.CartDeactivateException;
-import ru.yandex.practicum.exception.NoProductsInCartException;
-import ru.yandex.practicum.exception.NotAuthorizedUserException;
+import ru.yandex.practicum.exception.shoppingCart.CartDeactivateException;
+import ru.yandex.practicum.exception.shoppingCart.NoProductsInCartException;
+import ru.yandex.practicum.exception.shoppingCart.NotAuthorizedUserException;
 import ru.yandex.practicum.feign.WarehouseFeignClient;
 import ru.yandex.practicum.mapper.CartMapper;
 import ru.yandex.practicum.model.ShoppingCart;
@@ -202,11 +202,11 @@ public class CartService {
      */
     private void checkAvailableProductsInWarehouse(UUID shoppingCartId, Map<UUID, Integer> products) {
         ShoppingCartDto shoppingCartDto = ShoppingCartDto.builder()
-                .cartId(shoppingCartId)
+                .shoppingCartId(shoppingCartId)
                 .products(products)
                 .build();
 
-        warehouseFeignClient.checkProductQuantity(shoppingCartDto);
+        warehouseFeignClient.checkQuantityProducts(shoppingCartDto);
         log.debug("Checked product availability in warehouse for cart: {}", shoppingCartId);
     }
 

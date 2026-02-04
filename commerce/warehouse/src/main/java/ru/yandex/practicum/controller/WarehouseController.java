@@ -46,7 +46,7 @@ public class WarehouseController {
     public ResponseEntity<BookedProductsDto> checkProductQuantity(
             @Valid @RequestBody ru.yandex.practicum.dto.cart.ShoppingCartDto shoppingCartDto) {
         log.info("POST /api/v1/warehouse/check - Проверка доступности товаров для корзины: {}",
-                shoppingCartDto.getCartId());
+                shoppingCartDto.getShoppingCartId());
         BookedProductsDto result = warehouseService.checkProductQuantity(shoppingCartDto);
         return ResponseEntity.ok(result);
     }
